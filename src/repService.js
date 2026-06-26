@@ -2,6 +2,13 @@
 //  repService.js — Repütasyon İş Mantığı Katmanı
 //  Görev: Tüm rep okuma/yazma işlemlerini merkezi bir yerde toplar.
 //  Bu sayede event/command dosyaları temiz kalır.
+//
+//  Fonksiyonlar:
+//    getUserRep(userId)          → Kullanıcının kaydını döndürür
+//    giveRep(giverId, targetId)  → Cooldown'lu rep verme (normal akış)
+//    updateRep(userId, newRep)   → Direkt puan yazma (admin komutları)
+//    getLeaderboard()            → İlk 10 listesi
+//    formatCooldown(ms)          → Süre biçimlendirme
 // ============================================================
 
 const { getDb } = require('./database');
@@ -76,6 +83,28 @@ function giveRep(giverId, targetId, amount) {
   return { success: true, newRep: updated.rep };
 }
 
+// ── Admin: Direkt Puan Güncelle ──────────────────────────────
+/**
+ * Bir kullanıcının rep puanını doğrudan belirtilen değere ayarlar.
+ * Cooldown kontrolü yapılmaz — sadece yönetici komutları tarafından kullanılır.
+ *
+ * @param {string} userId  — Güncellenecek kullanıcının Discord ID'si
+ * @param {number} newRep  — Ayarlanacak yeni rep değeri (negatif olamaz)
+ * @returns {{ oldRep: number, newRep: number }}
+ */
+function updateRep(userId, newRep) {
+  const db = getDb();
+  const record = ensureUser(userId);
+  const oldRep = record.rep;
+
+  // Güvenlik: Puan hiçbir zaman eksi olamaz
+  const safeNewRep = Math.max(0, newRep);
+
+  db.prepare('UPDATE reputation SET rep = ? WHERE user_id = ?').run(safeNewRep, userId);
+
+  return { oldRep, newRep: safeNewRep };
+}
+
 // ── Top 10 Liderlik Tablosu ───────────────────────────────────
 /**
  * Sunucudaki en yüksek rep'e sahip ilk N kullanıcıyı döndürür.
@@ -102,4 +131,4 @@ function formatCooldown(ms) {
   return `${seconds} saniye`;
 }
 
-module.exports = { getUserRep, giveRep, getLeaderboard, formatCooldown, COOLDOWN_MS };
+module.exports = { getUserRep, giveRep, updateRep, getLeaderboard, formatCooldown, COOLDOWN_MS };

@@ -1,17 +1,19 @@
 // ============================================================
-//  commands/profil.js — /profil Slash Komutu
+//  commands/profil.js — /profil Slash Komutu (Güncellenmiş)
 //  Görev: Belirtilen kullanıcının (veya komutu yazanın)
-//         repütasyon profilini şık bir Embed ile gösterir.
+//         repütasyon profilini, mevcut rütbesini ve bir
+//         sonraki rütbeye kalan puanı şık bir Embed ile gösterir.
 // ============================================================
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getUserRep } = require('../src/repService');
+const { getRankForRep, getNextRank } = require('../src/rankConfig');
 
 module.exports = {
   // ── Komut Tanımı (Discord'a Kayıt İçin) ──────────────────
   data: new SlashCommandBuilder()
     .setName('profil')
-    .setDescription('Bir kullanıcının repütasyon profilini gösterir.')
+    .setDescription('Bir kullanıcının repütasyon profilini ve rütbesini gösterir.')
     .addUserOption((option) =>
       option
         .setName('kullanici')
@@ -36,12 +38,23 @@ module.exports = {
     const record = getUserRep(target.id);
     const rep = record.rep;
 
-    // ── Rep Rozetini Belirle ──────────────────────────────────
-    const badge = getRepBadge(rep);
+    // ── Rütbe Hesaplama ───────────────────────────────────────
+    const currentRank = getRankForRep(rep);
+    const nextRank = getNextRank(currentRank.name);
+
+    // ── Sonraki Seviye Bilgisi ─────────────────────────────────
+    let nextRankField;
+    if (!nextRank) {
+      // Maksimum seviye — God of Code
+      nextRankField = '🏆 **MAKSİMUM SEVİYE**\nTüm rütbelerin zirvesine ulaştın!';
+    } else {
+      const remaining = nextRank.minRep - rep;
+      nextRankField = `${nextRank.emoji} **${nextRank.name}**\n\`${remaining} puan\` daha kazan!`;
+    }
 
     // ── Embed Oluştur ─────────────────────────────────────────
     const embed = new EmbedBuilder()
-      .setColor(getRepColor(rep))
+      .setColor(currentRank.color)
       .setAuthor({
         name: `${target.username} — Repütasyon Profili`,
         iconURL: target.displayAvatarURL({ dynamic: true }),
@@ -54,9 +67,20 @@ module.exports = {
           inline: true,
         },
         {
-          name: '🏅 Rozet',
-          value: badge,
+          name: `${currentRank.emoji} Mevcut Rütbe`,
+          value: `**${currentRank.name}**`,
           inline: true,
+        },
+        {
+          // Boş alan — embed'i düzgün hizalar (3'lü grid için)
+          name: '\u200B',
+          value: '\u200B',
+          inline: true,
+        },
+        {
+          name: '⏭️ Sonraki Rütbe',
+          value: nextRankField,
+          inline: false,
         }
       )
       .setFooter({
@@ -67,23 +91,3 @@ module.exports = {
     return interaction.reply({ embeds: [embed] });
   },
 };
-
-// ── Yardımcı: Rep'e Göre Rozet ───────────────────────────────
-function getRepBadge(rep) {
-  if (rep >= 500) return '💎 Efsane';
-  if (rep >= 200) return '🥇 Altın';
-  if (rep >= 100) return '🥈 Gümüş';
-  if (rep >= 50)  return '🥉 Bronz';
-  if (rep >= 10)  return '⭐ Yıldız';
-  return '🌱 Yeni';
-}
-
-// ── Yardımcı: Rep'e Göre Renk ────────────────────────────────
-function getRepColor(rep) {
-  if (rep >= 500) return 0x00b4d8; // Elmas mavi
-  if (rep >= 200) return 0xffd700; // Altın
-  if (rep >= 100) return 0xc0c0c0; // Gümüş
-  if (rep >= 50)  return 0xcd7f32; // Bronz
-  if (rep >= 10)  return 0x57f287; // Yeşil
-  return 0x99aab5;                 // Gri (yeni)
-}

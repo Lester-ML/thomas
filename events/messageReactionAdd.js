@@ -10,6 +10,7 @@
 
 const { Events, EmbedBuilder } = require('discord.js');
 const { giveRep, formatCooldown } = require('../src/repService');
+const { checkRank } = require('../src/rankService');
 
 const CHECK_MARK_EMOJI = '✅';
 
@@ -90,6 +91,23 @@ module.exports = {
       await message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error('[ReactionAdd] Embed gönderilemedi:', err);
+    }
+
+    // ── Otomatik Rol Güncelleme ────────────────────────────────
+    // Rep verildikten sonra hedefin rütbesini kontrol et ve rolleri güncelle
+    try {
+      const guild = message.guild;
+      const targetMember = await guild.members.fetch(targetUser.id);
+      // giveRep +2 ekledi; bir önceki puan = newRep - 2
+      await checkRank({
+        member: targetMember,
+        oldRep: result.newRep - 2,
+        newRep: result.newRep,
+        guild,
+        client: reaction.client,
+      });
+    } catch (err) {
+      console.error('[ReactionAdd] checkRank çağrısı başarısız:', err);
     }
   },
 };

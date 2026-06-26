@@ -6,6 +6,7 @@
 
 const { Events, EmbedBuilder } = require('discord.js');
 const { giveRep, formatCooldown } = require('../src/repService');
+const { checkRank } = require('../src/rankService');
 
 // Teşekkür ifadelerinin listesi (küçük harf, Türkçe odaklı)
 const THANK_YOU_WORDS = [
@@ -74,7 +75,7 @@ module.exports = {
         continue;
       }
 
-      // ── Başarı Embed'i ────────────────────────────────────
+      // ── Başarı Embed'i ─────────────────────────────────────────
       const embed = new EmbedBuilder()
         .setColor(0x57f287) // Discord yeşili
         .setTitle('⭐ Repütasyon Verildi!')
@@ -86,6 +87,22 @@ module.exports = {
         .setTimestamp();
 
       await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } });
+
+      // ── Otomatik Rol Güncelleme ───────────────────────────────────
+      // Rep verildikten sonra hedefin rütbesini kontrol et ve rolleri güncelle
+      try {
+        const member = await message.guild.members.fetch(targetId);
+        // newRep: güncel puan | oldRep: önceki puan (newRep - 1 rep)
+        await checkRank({
+          member,
+          oldRep: result.newRep - 1, // giveRep +1 ekledi, bir önceki değer
+          newRep: result.newRep,
+          guild: message.guild,
+          client: message.client,
+        });
+      } catch (err) {
+        console.error('[MessageCreate] checkRank çağrısı başarısız:', err);
+      }
     }
   },
 };
