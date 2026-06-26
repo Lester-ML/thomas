@@ -22,8 +22,10 @@ function ensureUser(userId) {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM reputation WHERE user_id = ?').get(userId);
   if (!existing) {
-    db.prepare('INSERT INTO reputation (user_id, rep, last_gave_at) VALUES (?, 0, 0)').run(userId);
-    return { user_id: userId, rep: 0, last_gave_at: 0 };
+    db.prepare(
+      'INSERT INTO reputation (user_id, rep, balance, last_gave_at) VALUES (?, 0, 0, 0)'
+    ).run(userId);
+    return { user_id: userId, rep: 0, balance: 0, last_gave_at: 0 };
   }
   return existing;
 }
@@ -69,18 +71,23 @@ function giveRep(giverId, targetId, amount) {
     return { success: false, reason: 'cooldown', remainingMs: remaining };
   }
 
-  // Rep al (hedef kullanıcıyı oluştur/güncelle)
+  // Hedef kullanıcıyı oluştur/güncelle
   ensureUser(targetId);
 
-  // Atomic transaction: giver'ın cooldown'ını güncelle + target'ın repini artır
+  // ── Atomic Transaction ────────────────────────────────────
+  // giver cooldown güncelle + target rep VE balance arttır (Çift Kasa)
   const transaction = db.transaction(() => {
     db.prepare('UPDATE reputation SET last_gave_at = ? WHERE user_id = ?').run(now, giverId);
-    db.prepare('UPDATE reputation SET rep = rep + ? WHERE user_id = ?').run(amount, targetId);
+    db.prepare(
+      'UPDATE reputation SET rep = rep + ?, balance = balance + ? WHERE user_id = ?'
+    ).run(amount, amount, targetId);
   });
   transaction();
 
-  const updated = db.prepare('SELECT rep FROM reputation WHERE user_id = ?').get(targetId);
-  return { success: true, newRep: updated.rep };
+  const updated = db
+    .prepare('SELECT rep, balance FROM reputation WHERE user_id = ?')
+    .get(targetId);
+  return { success: true, newRep: updated.rep, newBalance: updated.balance };
 }
 
 // ── Admin: Direkt Puan Güncelle ──────────────────────────────
@@ -96,13 +103,19 @@ function updateRep(userId, newRep) {
   const db = getDb();
   const record = ensureUser(userId);
   const oldRep = record.rep;
+  const oldBalance = record.balance ?? 0;
 
   // Güvenlik: Puan hiçbir zaman eksi olamaz
   const safeNewRep = Math.max(0, newRep);
+  // Fark hesapla, balance'a da ekle (negatif fark balance'ı düşürmez)
+  const diff = safeNewRep - oldRep;
+  const safeNewBalance = Math.max(0, oldBalance + (diff > 0 ? diff : 0));
 
-  db.prepare('UPDATE reputation SET rep = ? WHERE user_id = ?').run(safeNewRep, userId);
+  db.prepare(
+    'UPDATE reputation SET rep = ?, balance = ? WHERE user_id = ?'
+  ).run(safeNewRep, safeNewBalance, userId);
 
-  return { oldRep, newRep: safeNewRep };
+  return { oldRep, newRep: safeNewRep, newBalance: safeNewBalance };
 }
 
 // ── Top 10 Liderlik Tablosu ───────────────────────────────────
@@ -131,4 +144,27 @@ function formatCooldown(ms) {
   return `${seconds} saniye`;
 }
 
-module.exports = { getUserRep, giveRep, updateRep, getLeaderboard, formatCooldown, COOLDOWN_MS };
+// ── Market Bakiyesi Harca ─────────────────────────────────────
+/**
+ * Kullanıcının SADECE balance değerinden belirtilen miktarı düşer.
+ * Rep puanına kesinlikle dokunulmaz — rütbe korunur.
+ *
+ * @param {string} userId  — Kullanıcının Discord ID'si
+ * @param {number} amount  — Harcanacak miktar
+ * @returns {{ success: boolean, newBalance?: number, reason?: string }}
+ */
+function spendBalance(userId, amount) {
+  const db = getDb();
+  const record = ensureUser(userId);
+
+  if (record.balance < amount) {
+    return { success: false, reason: 'insufficient', balance: record.balance };
+  }
+
+  const newBalance = record.balance - amount;
+  db.prepare('UPDATE reputation SET balance = ? WHERE user_id = ?').run(newBalance, userId);
+  return { success: true, newBalance };
+}
+
+
+module.exports = { getUserRep, giveRep, updateRep, getLeaderboard, formatCooldown, COOLDOWN_MS, spendBalance };

@@ -34,9 +34,10 @@ module.exports = {
       });
     }
 
-    // Veritabanından rep bilgisini al
+    // Veritabanından rep ve balance bilgisini al
     const record = getUserRep(target.id);
     const rep = record.rep;
+    const balance = record.balance ?? 0;
 
     // ── Rütbe Hesaplama ───────────────────────────────────────
     const currentRank = getRankForRep(rep);
@@ -62,19 +63,18 @@ module.exports = {
       .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }))
       .addFields(
         {
-          name: '⭐ Toplam Repütasyon',
+          name: '🏆 Toplam Rep (Rütbe Puanı)',
           value: `**${rep}** puan`,
+          inline: true,
+        },
+        {
+          name: '💰 Kuantum Kredi (Market Bakiyesi)',
+          value: `**${balance}** kredi`,
           inline: true,
         },
         {
           name: `${currentRank.emoji} Mevcut Rütbe`,
           value: `**${currentRank.name}**`,
-          inline: true,
-        },
-        {
-          // Boş alan — embed'i düzgün hizalar (3'lü grid için)
-          name: '\u200B',
-          value: '\u200B',
           inline: true,
         },
         {
