@@ -61,24 +61,42 @@ function initDatabase() {
   }
 
   // ── Market Varsayılan Ürünleri (Seed) ────────────────────
-  // Tablo boşsa ilk ürünleri ekle
+  // Tablo boşsa ilk ürünleri ekle (yeni kurulum)
   const itemCount = db.prepare('SELECT COUNT(*) as cnt FROM market_items').get();
   if (itemCount.cnt === 0) {
     const insert = db.prepare(
       'INSERT INTO market_items (name, price, roleId) VALUES (?, ?, ?)'
     );
     const seedItems = [
-      { name: '🍏 Matrix Yeşili',     price: 300,  roleId: 'ROLE_ID_GIRIN' },
-      { name: '🧊 Siber Mavi',        price: 300,  roleId: 'ROLE_ID_GIRIN' },
-      { name: '🟣 Kuantum Moru',      price: 500,  roleId: 'ROLE_ID_GIRIN' },
-      { name: '🩸 Hacker Kırmızısı', price: 500,  roleId: 'ROLE_ID_GIRIN' },
+      { name: '🍏 Matrix Green',  price: 300, roleId: '1520168372547883209' },
+      { name: '🧊 Cyber Blue',    price: 300, roleId: '1520169236893270106' },
+      { name: '🟣 Quantum Purple', price: 500, roleId: '1520168823741747302' },
+      { name: '🩸 Hacker Red',    price: 500, roleId: '1520169382678892695' },
     ];
     const seedAll = db.transaction(() => {
       for (const item of seedItems) insert.run(item.name, item.price, item.roleId);
     });
     seedAll();
     console.log('[DB] Market varsayılan ürünleri eklendi (4 ürün).');
+  } else {
+    // ── Mevcut Kayıtları Güncelle (Migration) ──────────────
+    // Eğer eski ROLE_ID_GIRIN değerleri varsa gerçek ID'lerle güncelle
+    const updates = [
+      { id: 1, name: '🍏 Matrix Green',   price: 300, roleId: '1520168372547883209' },
+      { id: 2, name: '🧊 Cyber Blue',     price: 300, roleId: '1520169236893270106' },
+      { id: 3, name: '🟣 Quantum Purple', price: 500, roleId: '1520168823741747302' },
+      { id: 4, name: '🩸 Hacker Red',     price: 500, roleId: '1520169382678892695' },
+    ];
+    const updateStmt = db.prepare(
+      'UPDATE market_items SET name = ?, price = ?, roleId = ? WHERE id = ?'
+    );
+    const updateAll = db.transaction(() => {
+      for (const u of updates) updateStmt.run(u.name, u.price, u.roleId, u.id);
+    });
+    updateAll();
+    console.log('[DB] Market ürünleri güncellendi (rol ID\'leri ve isimler).');
   }
+
 
   console.log('[DB] Veritabanı başlatıldı → database.sqlite');
   return db;
