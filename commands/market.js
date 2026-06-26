@@ -42,6 +42,16 @@ module.exports = {
 
   // ── Komut Yürütücüsü ─────────────────────────────────────
   async execute(interaction) {
+    // ── Kanal Kısıtlaması ───────────────────────────────────
+    // Market komutları sadece belirlenen kanalda çalışır
+    const marketChannelId = process.env.MARKET_CHANNEL_ID;
+    if (marketChannelId && interaction.channelId !== marketChannelId) {
+      return interaction.reply({
+        content: `🛒 Market komutları sadece <#${marketChannelId}> kanalında kullanılabilir!`,
+        ephemeral: true,
+      });
+    }
+
     const sub = interaction.options.getSubcommand();
 
     if (sub === 'liste') {
