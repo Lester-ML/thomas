@@ -24,91 +24,91 @@ const RANKS = [
   {
     name: 'Junior 1',
     minRep: 0,
-    roleId: 'ROLE_ID', // ← Buraya Junior 1 rol ID'sini yaz
+    roleId: '1493344807450579134', // Junior 1
     emoji: '🌱',
     color: 0x8bc34a, // Açık yeşil
   },
   {
     name: 'Junior 2',
     minRep: 15,
-    roleId: 'ROLE_ID', // ← Buraya Junior 2 rol ID'sini yaz
+    roleId: '1493346624993362071', // Junior 2
     emoji: '🌿',
     color: 0x4caf50, // Yeşil
   },
   {
     name: 'Junior 3',
     minRep: 30,
-    roleId: 'ROLE_ID', // ← Buraya Junior 3 rol ID'sini yaz
+    roleId: '1493346706157211719', // Junior 3
     emoji: '🍃',
     color: 0x009688, // Teal
   },
   {
     name: 'Mid 1',
     minRep: 45,
-    roleId: 'ROLE_ID', // ← Buraya Mid 1 rol ID'sini yaz
+    roleId: '1493346778680922163', // Mid 1
     emoji: '⚡',
     color: 0x03a9f4, // Açık mavi
   },
   {
     name: 'Mid 2',
     minRep: 75,
-    roleId: 'ROLE_ID', // ← Buraya Mid 2 rol ID'sini yaz
+    roleId: '1493347264700223759', // Mid 2
     emoji: '💡',
     color: 0x2196f3, // Mavi
   },
   {
     name: 'Mid 3',
     minRep: 105,
-    roleId: 'ROLE_ID', // ← Buraya Mid 3 rol ID'sini yaz
+    roleId: '1493347331267891402', // Mid 3
     emoji: '🔷',
     color: 0x3f51b5, // Indigo
   },
   {
     name: 'Senior 1',
     minRep: 135,
-    roleId: 'ROLE_ID', // ← Buraya Senior 1 rol ID'sini yaz
+    roleId: '1493347479901569100', // Senior 1
     emoji: '🔥',
     color: 0x9c27b0, // Mor
   },
   {
     name: 'Senior 2',
     minRep: 235,
-    roleId: 'ROLE_ID', // ← Buraya Senior 2 rol ID'sini yaz
+    roleId: '1493347647107633192', // Senior 2
     emoji: '💜',
     color: 0x673ab7, // Koyu mor
   },
   {
     name: 'Senior 3',
     minRep: 335,
-    roleId: 'ROLE_ID', // ← Buraya Senior 3 rol ID'sini yaz
+    roleId: '1493347716707909743', // Senior 3
     emoji: '🌟',
     color: 0xff5722, // Turuncu
   },
   {
     name: 'Boss 1',
     minRep: 435,
-    roleId: 'ROLE_ID', // ← Buraya Boss 1 rol ID'sini yaz
+    roleId: '1493347879010570422', // Boss 1
     emoji: '👑',
     color: 0xff9800, // Amber
   },
   {
     name: 'Boss 2',
     minRep: 685,
-    roleId: 'ROLE_ID', // ← Buraya Boss 2 rol ID'sini yaz
+    roleId: '1493347947142975550', // Boss 2
     emoji: '🏆',
     color: 0xffc107, // Altın
   },
   {
     name: 'Boss 3',
     minRep: 935,
-    roleId: 'ROLE_ID', // ← Buraya Boss 3 rol ID'sini yaz
+    roleId: '1493348027425882222', // Boss 3
     emoji: '💎',
     color: 0xffd700, // Parlak altın
   },
   {
     name: 'God of Code',
     minRep: 1000,
-    roleId: 'ROLE_ID', // ← Buraya God of Code rol ID'sini yaz
+    roleId: '1520090320191230103', // God of Code
     emoji: '⚡',
     color: 0xffffff, // Beyaz / epik
   },
