@@ -105,6 +105,12 @@ async function buildRankInfoEmbed(guild) {
       inline: false,
     },
     {
+      name: '⚠️ Uyarı',
+      value:
+        '> Sistem açıklarıyla rep kazanmaya çalışanlar **adminlerimiz tarafından tespit edilip cezlandırılacaktır.**',
+      inline: false,
+    },
+    {
       name: '📊 Mevcut Sıralamayi Görmek İçin',
       value: '`/liderlik` komutunu kullan!',
       inline: true,

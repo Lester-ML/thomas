@@ -32,28 +32,28 @@ const RANKS = [
     name: 'Junior 2',
     minRep: 15,
     roleId: '1493346624993362071', // Junior 2
-    emoji: '🌿',
+    emoji: '🌱',
     color: 0x4caf50, // Yeşil
   },
   {
     name: 'Junior 3',
     minRep: 30,
     roleId: '1493346706157211719', // Junior 3
-    emoji: '🍃',
+    emoji: '🌱',
     color: 0x009688, // Teal
   },
   {
     name: 'Mid 1',
     minRep: 45,
     roleId: '1493346778680922163', // Mid 1
-    emoji: '⚡',
+    emoji: '🔷',
     color: 0x03a9f4, // Açık mavi
   },
   {
     name: 'Mid 2',
     minRep: 75,
     roleId: '1493347264700223759', // Mid 2
-    emoji: '💡',
+    emoji: '🔷',
     color: 0x2196f3, // Mavi
   },
   {
@@ -67,14 +67,14 @@ const RANKS = [
     name: 'Senior 1',
     minRep: 135,
     roleId: '1493347479901569100', // Senior 1
-    emoji: '🔥',
+    emoji: '🌟',
     color: 0x9c27b0, // Mor
   },
   {
     name: 'Senior 2',
     minRep: 235,
     roleId: '1493347647107633192', // Senior 2
-    emoji: '💜',
+    emoji: '🌟',
     color: 0x673ab7, // Koyu mor
   },
   {
@@ -88,14 +88,14 @@ const RANKS = [
     name: 'Boss 1',
     minRep: 435,
     roleId: '1493347879010570422', // Boss 1
-    emoji: '👑',
+    emoji: '💎',
     color: 0xff9800, // Amber
   },
   {
     name: 'Boss 2',
     minRep: 685,
     roleId: '1493347947142975550', // Boss 2
-    emoji: '🏆',
+    emoji: '💎',
     color: 0xffc107, // Altın
   },
   {
