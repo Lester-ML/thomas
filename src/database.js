@@ -35,6 +35,11 @@ function initDatabase() {
       rep         INTEGER NOT NULL DEFAULT 0,
       last_gave_at INTEGER NOT NULL DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
 
   console.log('[DB] Veritabanı başlatıldı → database.sqlite');
@@ -50,4 +55,23 @@ function getDb() {
   return db;
 }
 
-module.exports = { initDatabase, getDb };
+/**
+ * Bir ayarı veritabanından okur.
+ * @param {string} key - Ayar anahtarı
+ * @returns {string|null}
+ */
+function getSetting(key) {
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  return row ? row.value : null;
+}
+
+/**
+ * Bir ayarı veritabanına yazar (yoksa oluşturur).
+ * @param {string} key   - Ayar anahtarı
+ * @param {string} value - Ayar değeri
+ */
+function setSetting(key, value) {
+  getDb().prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value);
+}
+
+module.exports = { initDatabase, getDb, getSetting, setSetting };

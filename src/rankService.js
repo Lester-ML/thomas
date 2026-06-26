@@ -11,11 +11,9 @@
 
 const { EmbedBuilder } = require('discord.js');
 const { RANKS, getRankForRep, getNextRank } = require('./rankConfig');
+const { getSetting } = require('./database');
 
-// ── Sabitler ─────────────────────────────────────────────────
-// Seviye atlamak için kutlama mesajının gönderileceği kanal ID'si.
-// .env dosyasına LEVEL_UP_CHANNEL_ID=<kanal_id> satırını ekleyin.
-const LEVEL_UP_CHANNEL_ID = process.env.LEVEL_UP_CHANNEL_ID;
+// (Kanal ID artık /seviye-kanal komutuyla DB'den okunur)
 
 // ── Tüm Rank Rol ID'lerini Bir Sete Topla ────────────────────
 // checkRank içinde "bu kullanıcının hangi rank rolleri var" kontrolü
@@ -72,8 +70,10 @@ async function checkRank({ member, oldRep, newRep, guild, client }) {
     if (newRep <= oldRep) return;
 
     // Kutlama kanalını bul
+    // Kutlama kanalını DB'den oku
+    const LEVEL_UP_CHANNEL_ID = getSetting('level_up_channel_id');
     if (!LEVEL_UP_CHANNEL_ID) {
-      console.warn('[RankService] LEVEL_UP_CHANNEL_ID .env dosyasında tanımlı değil, kutlama mesajı atlanıyor.');
+      console.warn('[RankService] Seviye kanal ayarlanmamış. /seviye-kanal komutuyla ayarlayın.');
       return;
     }
 
