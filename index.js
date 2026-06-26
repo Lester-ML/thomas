@@ -7,10 +7,11 @@
 
 require('dotenv').config();
 
-const { Client, Collection, GatewayIntentBits, Partials } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, Partials, Events } = require('discord.js');
 const path = require('path');
 const fs = require('fs');
 const { initDatabase } = require('./src/database');
+const { startRankBilgiScheduler } = require('./src/rankBilgiScheduler');
 
 // ── Ortam Değişkeni Doğrulaması ───────────────────────────────
 const { DISCORD_TOKEN } = process.env;
@@ -83,6 +84,12 @@ for (const file of eventFiles) {
 
   console.log(`[Olay] Yüklendi: ${event.name}`);
 }
+
+// ── Rank Bilgilendirme Zamanlayıcısını Başlat ─────────────────
+// Bot hazır olduktan sonra (ClientReady) scheduler'ı çalıştır
+client.once(Events.ClientReady, (readyClient) => {
+  startRankBilgiScheduler(readyClient);
+});
 
 // ── Genel Hata Yakalama ───────────────────────────────────────
 // İşlenmeyen reddedilen promise'leri yakala (botu çökertmez)
