@@ -41,12 +41,12 @@ const TIER_GROUPS = [
     barEmoji: '🟣',
   },
   {
-    label: '👑 Boss Tier',
+    label: '🌟 Boss Tier',
     filter: (r) => r.name.startsWith('Boss'),
     barEmoji: '🟡',
   },
   {
-    label: '⚡ Legend',
+    label: '👑 Legend',
     filter: (r) => r.name === 'God of Code',
     barEmoji: '⚪',
   },
