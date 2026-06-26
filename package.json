@@ -1,0 +1,22 @@
+{
+  "name": "reputation-bot",
+  "version": "1.0.0",
+  "description": "Yazılım topluluklarında yardımlaşmayı teşvik etmek için geliştirilmiş, tam özellikli bir Discord bot.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
+  }
+}

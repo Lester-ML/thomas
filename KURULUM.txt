@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────────────────────
+#  Repütasyon Botu — Hızlı Kurulum Kılavuzu
+# ─────────────────────────────────────────────────────────────
+
+## ADIM 1: Node.js Yükle (Henüz kurulu değilse)
+
+Node.js resmi sitesinden LTS sürümünü indir:
+  https://nodejs.org/
+
+Kurulumu doğrula (terminalde):
+  node --version     # v18+ olmalı
+  npm --version      # v9+ olmalı
+
+## ADIM 2: Paketleri Yükle
+
+cd reputation-bot
+npm install
+
+## ADIM 3: .env Dosyasını Oluştur
+
+.env.example dosyasını kopyala:
+  copy .env.example .env
+
+Sonra .env dosyasını düzenleyip şunları doldur:
+  DISCORD_TOKEN=...    ← Discord Developer Portal > Bot > Token
+  CLIENT_ID=...        ← Discord Developer Portal > General Information > Application ID
+  GUILD_ID=...         ← Test sunucusuna sağ tıkla > Sunucu Kimliğini Kopyala
+
+## ADIM 4: Discord Developer Portal'da Intent'leri Aç
+
+  discord.com/developers/applications → Bot → Privileged Gateway Intents
+    ✅ SERVER MEMBERS INTENT
+    ✅ MESSAGE CONTENT INTENT
+
+## ADIM 5: Slash Komutlarını Discord'a Kaydet
+
+  node deploy-commands.js
+
+## ADIM 6: Botu Başlat!
+
+  node index.js
+
+# ─────────────────────────────────────────────────────────────
+# HAZIR! Bot çalışmaya başlayacak.
+# ─────────────────────────────────────────────────────────────

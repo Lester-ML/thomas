@@ -1,0 +1,7 @@
+# Reputation Bot - Git Ignore
+node_modules/
+.env
+database.sqlite
+database.sqlite-shm
+database.sqlite-wal
+*.log

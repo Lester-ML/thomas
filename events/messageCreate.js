@@ -1,0 +1,91 @@
+// ============================================================
+//  events/messageCreate.js — Mesaj Dinleyici
+//  Görev: Teşekkür içeren ve kullanıcı etiketleyen mesajları
+//         yakalar ve etiketlenen kişiye +1 rep verir.
+// ============================================================
+
+const { Events, EmbedBuilder } = require('discord.js');
+const { giveRep, formatCooldown } = require('../src/repService');
+
+// Teşekkür ifadelerinin listesi (küçük harf, Türkçe odaklı)
+const THANK_YOU_WORDS = [
+  'teşekkür',
+  'teşekkürler',
+  'sağol',
+  'sağolasın',
+  'eyvallah',
+  'thanks',
+  'thx',
+  'ty',
+  'thank you',
+];
+
+module.exports = {
+  name: Events.MessageCreate,
+  async execute(message) {
+    // ── Temel Filtreleme ──────────────────────────────────────
+
+    // Botları yoksay
+    if (message.author.bot) return;
+
+    // Sunucu mesajı değilse yoksay (DM vb.)
+    if (!message.guild) return;
+
+    // Etiketlenen kullanıcı var mı?
+    if (message.mentions.users.size === 0) return;
+
+    // Mesaj teşekkür kelimesi içeriyor mu? (büyük/küçük harf duyarsız)
+    const lowerContent = message.content.toLowerCase();
+    const hasThankYou = THANK_YOU_WORDS.some((word) => lowerContent.includes(word));
+    if (!hasThankYou) return;
+
+    // ── Her Etiketlenen Kullanıcı İçin İşlem ─────────────────
+    for (const [targetId, targetUser] of message.mentions.users) {
+      // Botlara rep verilemez
+      if (targetUser.bot) {
+        await message.reply({
+          content: '🤖 Botlara repütasyon verilemez!',
+          allowedMentions: { repliedUser: false },
+        });
+        continue;
+      }
+
+      // Kendi kendine rep verme koruması
+      if (message.author.id === targetId) {
+        await message.reply({
+          content: '🚫 Kendinize repütasyon veremezsiniz!',
+          allowedMentions: { repliedUser: false },
+        });
+        continue;
+      }
+
+      // Rep vermeyi dene (cooldown + kayıt işlemi)
+      const result = giveRep(message.author.id, targetId, 1);
+
+      if (!result.success) {
+        if (result.reason === 'cooldown') {
+          const timeLeft = formatCooldown(result.remainingMs);
+          await message.reply({
+            content: `⏳ Biraz yavaş! Tekrar rep verebilmek için **${timeLeft}** beklemeniz gerekiyor.`,
+            allowedMentions: { repliedUser: false },
+          });
+        }
+        // 'self' durumu zaten yukarıda ele alındı
+        continue;
+      }
+
+      // ── Başarı Embed'i ────────────────────────────────────
+      const embed = new EmbedBuilder()
+        .setColor(0x57f287) // Discord yeşili
+        .setTitle('⭐ Repütasyon Verildi!')
+        .setDescription(
+          `${message.author} → ${targetUser} için **+1 rep** verdi!\n` +
+          `${targetUser.username} artık **${result.newRep} rep** puanına sahip.`
+        )
+        .setFooter({ text: 'Yardımlaşmak güzeldir 💙' })
+        .setTimestamp();
+
+      await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } });
+    }
+  },
+};
