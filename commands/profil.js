@@ -1,93 +1,81 @@
 // ============================================================
-//  commands/profil.js — /profil Slash Komutu (Güncellenmiş)
-//  Görev: Belirtilen kullanıcının (veya komutu yazanın)
-//         repütasyon profilini, mevcut rütbesini ve bir
-//         sonraki rütbeye kalan puanı şık bir Embed ile gösterir.
+//  commands/profil.js — /profil Slash Komutu (Canvas Sürümü)
+//  Görev: Kullanıcının görsel profil kartını canvas ile oluşturur
+//         ve kanala PNG resim olarak gönderir.
+//         Embed yerine AttachmentBuilder kullanılır.
 // ============================================================
 
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { getUserRep } = require('../src/repService');
+const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
+const { getUserRep }          = require('../src/repService');
 const { getRankForRep, getNextRank } = require('../src/rankConfig');
+const { generateProfileCard } = require('../src/profileCard');
 
 module.exports = {
-  // ── Komut Tanımı (Discord'a Kayıt İçin) ──────────────────
+  // ── Komut Tanımı ─────────────────────────────────────────
   data: new SlashCommandBuilder()
     .setName('profil')
-    .setDescription('Bir kullanıcının repütasyon profilini ve rütbesini gösterir.')
+    .setDescription('Görsel profil kartını gösterir.')
     .addUserOption((option) =>
       option
         .setName('kullanici')
-        .setDescription('Profili görüntülenecek kullanıcı (boş bırakılırsa kendiniz)')
+        .setDescription('Profili görüntülenecek kullanıcı (boş = kendiniz)')
         .setRequired(false)
     ),
 
-  // ── Komut Yürütücüsü ──────────────────────────────────────
+  // ── Komut Yürütücüsü ─────────────────────────────────────
   async execute(interaction) {
-    // Kullanıcı seçimi: Parametreden al, yoksa komutu yazanı kullan
+    // Hedef kullanıcıyı belirle: parametre yoksa komutu yazan kişi
     const target = interaction.options.getUser('kullanici') ?? interaction.user;
 
-    // Botların profili yok
+    // Bot kontrolü
     if (target.bot) {
       return interaction.reply({
-        content: '🤖 Botların repütasyon profili bulunmamaktadır.',
+        content: '🤖 Botların profil kartı bulunmamaktadır.',
         ephemeral: true,
       });
     }
 
-    // Veritabanından rep ve balance bilgisini al
-    const record = getUserRep(target.id);
-    const rep = record.rep;
+    // Kartı oluşturmak biraz sürebilir — hemen "işleniyor" göster
+    await interaction.deferReply();
+
+    // ── Veritabanından Puan Bilgileri ─────────────────────────
+    const record  = getUserRep(target.id);
+    const rep     = record.rep;
     const balance = record.balance ?? 0;
 
     // ── Rütbe Hesaplama ───────────────────────────────────────
     const currentRank = getRankForRep(rep);
-    const nextRank = getNextRank(currentRank.name);
+    const nextRank    = getNextRank(currentRank.name);
 
-    // ── Sonraki Seviye Bilgisi ─────────────────────────────────
-    let nextRankField;
-    if (!nextRank) {
-      // Maksimum seviye — God of Code
-      nextRankField = '🏆 **MAKSİMUM SEVİYE**\nTüm rütbelerin zirvesine ulaştın!';
-    } else {
-      const remaining = nextRank.minRep - rep;
-      nextRankField = `${nextRank.emoji} **${nextRank.name}**\n\`${remaining} puan\` daha kazan!`;
+    // ── Avatar URL (PNG, 256px) ───────────────────────────────
+    // .png formatı zorunlu — canvas JPEG/WEBP'de de çalışır ama PNG daha stabil
+    const avatarURL = target.displayAvatarURL({ extension: 'png', size: 256 });
+
+    try {
+      // ── Canvas ile Kart Üret ───────────────────────────────
+      const imageBuffer = await generateProfileCard({
+        username:    target.username,
+        avatarURL,
+        rep,
+        balance,
+        currentRank,
+        nextRank,
+      });
+
+      // ── PNG Buffer'ı Discord'a Gönder ──────────────────────
+      // AttachmentBuilder: Embed yerine dosya olarak gönderim
+      const attachment = new AttachmentBuilder(imageBuffer, {
+        name:        'profil.png',
+        description: `${target.username} profil kartı`,
+      });
+
+      return interaction.editReply({ files: [attachment] });
+
+    } catch (err) {
+      console.error('[profil] Kart oluşturma hatası:', err);
+      return interaction.editReply({
+        content: '❌ Profil kartı oluşturulurken bir hata oluştu. Lütfen tekrar dene.',
+      });
     }
-
-    // ── Embed Oluştur ─────────────────────────────────────────
-    const embed = new EmbedBuilder()
-      .setColor(currentRank.color)
-      .setAuthor({
-        name: `${target.username} — Repütasyon Profili`,
-        iconURL: target.displayAvatarURL({ dynamic: true }),
-      })
-      .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }))
-      .addFields(
-        {
-          name: '🏆 Toplam Rep (Rütbe Puanı)',
-          value: `**${rep}** puan`,
-          inline: true,
-        },
-        {
-          name: '💰 Kuantum Kredi (Market Bakiyesi)',
-          value: `**${balance}** kredi`,
-          inline: true,
-        },
-        {
-          name: `${currentRank.emoji} Mevcut Rütbe`,
-          value: `**${currentRank.name}**`,
-          inline: true,
-        },
-        {
-          name: '⏭️ Sonraki Rütbe',
-          value: nextRankField,
-          inline: false,
-        }
-      )
-      .setFooter({
-        text: `Kullanıcı ID: ${target.id} • /liderlik ile sıralamayı gör`,
-      })
-      .setTimestamp();
-
-    return interaction.reply({ embeds: [embed] });
   },
 };

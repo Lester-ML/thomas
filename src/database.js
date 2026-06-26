@@ -48,6 +48,13 @@ function initDatabase() {
       price  INTEGER NOT NULL,
       roleId TEXT    NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS user_items (
+      user_id TEXT    NOT NULL,
+      item_id INTEGER NOT NULL,
+      PRIMARY KEY (user_id, item_id),
+      FOREIGN KEY (item_id) REFERENCES market_items(id)
+    );
   `);
 
   // ── Mevcut veritabanlarına balance sütunu ekle (migration) ──

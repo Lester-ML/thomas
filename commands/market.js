@@ -155,6 +155,19 @@ async function handleSatinAl(interaction) {
     });
   }
 
+  // ── Zaten Satın Alındı mı? ────────────────────────────────────
+  const alreadyOwned = db
+    .prepare('SELECT 1 FROM user_items WHERE user_id = ? AND item_id = ?')
+    .get(interaction.user.id, item.id);
+
+  if (alreadyOwned) {
+    return interaction.editReply({
+      content:
+        `ℹ️ **${item.name}** zaten sahipsindesin!\n` +
+        `> Takmak veya çıkarmak için \`/item-duzenle\` komutunu kullan.`,
+    });
+  }
+
   let role;
   try {
     role = await interaction.guild.roles.fetch(item.roleId);
@@ -183,9 +196,12 @@ async function handleSatinAl(interaction) {
   const spendResult = spendBalance(interaction.user.id, item.price);
 
   if (!spendResult.success) {
-    // Teorik olarak buraya gelmemeli ama güvenlik için kontrol
     return interaction.editReply({ content: '❌ Bakiye düşülürken hata oluştu.' });
   }
+
+  // ── Sahiplik Kaydını Veritabanına Ekle ───────────────────────
+  db.prepare('INSERT OR IGNORE INTO user_items (user_id, item_id) VALUES (?, ?)')
+    .run(interaction.user.id, item.id);
 
   // ── Başarı Mesajı ────────────────────────────────────────────
   const embed = new EmbedBuilder()
@@ -196,8 +212,13 @@ async function handleSatinAl(interaction) {
       `> Harcanan: **${item.price} Kuantum Kredi**\n` +
       `> Kalan bakiye: **${spendResult.newBalance} kredi**`
     )
+    .addFields({
+      name: '💡 İpucu',
+      value: '`/item-duzenle` komutuyla sahip olduğun renkleri istediğin zaman tak/çıkar!',
+    })
     .setFooter({ text: 'İyi kullanımlar! | /market liste ile diğer ürünlere bak' })
     .setTimestamp();
 
   return interaction.editReply({ embeds: [embed] });
 }
+
