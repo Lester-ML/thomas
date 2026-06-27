@@ -55,17 +55,26 @@ module.exports = {
  * @returns {{ embed: EmbedBuilder, row: ActionRowBuilder }}
  */
 function buildEnvanterUI(items, actives, userId) {
-  const colors = items.filter((i) => i.type === 'color');
-  const bgs    = items.filter((i) => i.type === 'bg');
+  const colors        = items.filter((i) => i.type === 'color');
+  const nameColors    = items.filter((i) => i.type === 'name_color');
+  const profileFrames = items.filter((i) => i.type === 'profile_frame');
+  const avatarFrames  = items.filter((i) => i.type === 'avatar_frame');
+  const bgs           = items.filter((i) => i.type === 'bg');
 
   // Aktif ID'leri belirle
-  const activeColorId = actives.active_color_id;
-  const activeBgId    = actives.active_bg_id;
+  const activeColorId        = actives.active_color_id;
+  const activeNameColorId    = actives.active_name_color_id;
+  const activeProfileFrameId = actives.active_profile_frame_id;
+  const activeAvatarFrameId  = actives.active_avatar_frame_id;
+  const activeBgId           = actives.active_bg_id;
 
   // Ürün satırı formatı
   const fmt = (item) => {
     const isActive =
       (item.type === 'color' && item.id === activeColorId) ||
+      (item.type === 'name_color' && item.id === activeNameColorId) ||
+      (item.type === 'profile_frame' && item.id === activeProfileFrameId) ||
+      (item.type === 'avatar_frame' && item.id === activeAvatarFrameId) ||
       (item.type === 'bg'    && item.id === activeBgId);
     return `${isActive ? '✅' : '▫️'} **${item.name}** — \`${item.price} kr\`${isActive ? ' *(Kullanılıyor)*' : ''}`;
   };
@@ -77,11 +86,23 @@ function buildEnvanterUI(items, actives, userId) {
     .setDescription('Aşağıdaki menüden bir ürün seç: **zaten takılıysa çıkar, takılı değilse tak.**')
     .addFields(
       {
-        name: '🎨 İsim Renkleri',
-        value: colors.length > 0 ? colors.map(fmt).join('\n') : '_Renk yok._',
+        name: '🎨 Rol Renkleri',
+        value: colors.length > 0 ? colors.map(fmt).join('\n') : '_Rol rengi yok._',
       },
       {
-        name: '🖼️ Profil Arka Planları',
+        name: '🔤 İsim Renkleri',
+        value: nameColors.length > 0 ? nameColors.map(fmt).join('\n') : '_İsim rengi yok._',
+      },
+      {
+        name: '🖼️ Profil Çerçeveleri',
+        value: profileFrames.length > 0 ? profileFrames.map(fmt).join('\n') : '_Profil çerçevesi yok._',
+      },
+      {
+        name: '🔘 Avatar Çerçeveleri',
+        value: avatarFrames.length > 0 ? avatarFrames.map(fmt).join('\n') : '_Avatar çerçevesi yok._',
+      },
+      {
+        name: '🌄 Profil Arka Planları',
         value: bgs.length > 0 ? bgs.map(fmt).join('\n') : '_Arka plan yok._',
       }
     )
@@ -92,13 +113,23 @@ function buildEnvanterUI(items, actives, userId) {
   const menuOptions = items.map((item) => {
     const isActive =
       (item.type === 'color' && item.id === activeColorId) ||
+      (item.type === 'name_color' && item.id === activeNameColorId) ||
+      (item.type === 'profile_frame' && item.id === activeProfileFrameId) ||
+      (item.type === 'avatar_frame' && item.id === activeAvatarFrameId) ||
       (item.type === 'bg'    && item.id === activeBgId);
+
+    let descType = '';
+    switch (item.type) {
+      case 'color': descType = '🎨 Rol rengi'; break;
+      case 'name_color': descType = '🔤 İsim rengi'; break;
+      case 'profile_frame': descType = '🖼️ Profil çerç.'; break;
+      case 'avatar_frame': descType = '🔘 Avatar çerç.'; break;
+      case 'bg': descType = '🌄 Arka plan'; break;
+    }
 
     return {
       label: isActive ? `${item.name} ✅` : item.name,
-      description: isActive
-        ? `${item.type === 'color' ? '🎨 İsim rengi' : '🖼️ Arka plan'} — Seçersen ÇIKARIR`
-        : `${item.type === 'color' ? '🎨 İsim rengi' : '🖼️ Arka plan'} — Seçersen TAKAR`,
+      description: `${descType} — Seçersen ${isActive ? 'ÇIKARIR' : 'TAKAR'}`,
       value: String(item.id),
     };
   });
@@ -132,10 +163,17 @@ async function handleEnvanterSelect(interaction) {
   }
 
   // ── Aktif eşyaları kontrol et ────────────────────────────
-  const actives     = getActiveItems(userId);
-  const activeField = item.type === 'color' ? 'active_color_id' : 'active_bg_id';
-  const currentId   = actives[activeField];
-  const isActive    = currentId === selectedId;
+  const actives = getActiveItems(userId);
+  let activeField;
+  switch (item.type) {
+    case 'color': activeField = 'active_color_id'; break;
+    case 'name_color': activeField = 'active_name_color_id'; break;
+    case 'profile_frame': activeField = 'active_profile_frame_id'; break;
+    case 'avatar_frame': activeField = 'active_avatar_frame_id'; break;
+    case 'bg': activeField = 'active_bg_id'; break;
+  }
+  const currentId = actives[activeField];
+  const isActive  = currentId === selectedId;
 
   try {
     const member = await interaction.guild.members.fetch(userId);

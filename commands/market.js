@@ -58,8 +58,11 @@ async function handleListe(interaction) {
   }
 
   // ── Kategoriye göre ayır ─────────────────────────────────
-  const colors = items.filter((i) => i.type === 'color');
-  const bgs    = items.filter((i) => i.type === 'bg');
+  const colors        = items.filter((i) => i.type === 'color');
+  const nameColors    = items.filter((i) => i.type === 'name_color');
+  const profileFrames = items.filter((i) => i.type === 'profile_frame');
+  const avatarFrames  = items.filter((i) => i.type === 'avatar_frame');
+  const bgs           = items.filter((i) => i.type === 'bg');
 
   const formatItem = (item) => {
     const canAfford = balance >= item.price ? '✅' : '❌';
@@ -70,19 +73,27 @@ async function handleListe(interaction) {
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
     .setTitle('🛒  Quantum Market')
-    .setDescription('Kuantum Kredi ile özel isim renkleri ve profil arka planları satın al!\n\n> ✅ = Satın alabilirsin  |  ❌ = Yetersiz bakiye')
+    .setDescription('Kuantum Kredi ile özel isim renkleri, çerçeveler ve profil arka planları satın al!\n\n> ✅ = Satın alabilirsin  |  ❌ = Yetersiz bakiye')
     .addFields(
       {
-        name: '🎨 İsim Renkleri',
-        value: colors.length > 0
-          ? colors.map(formatItem).join('\n')
-          : '_Şu an renk ürünü yok._',
+        name: '🎨 Rol Renkleri',
+        value: colors.length > 0 ? colors.map(formatItem).join('\n') : '_Şu an rol rengi ürünü yok._',
       },
       {
-        name: '🖼️ Profil Arka Planları',
-        value: bgs.length > 0
-          ? bgs.map(formatItem).join('\n')
-          : '_Şu an arka plan ürünü yok._',
+        name: '🔤 İsim Renkleri',
+        value: nameColors.length > 0 ? nameColors.map(formatItem).join('\n') : '_Şu an isim rengi ürünü yok._',
+      },
+      {
+        name: '🖼️ Profil Çerçeveleri',
+        value: profileFrames.length > 0 ? profileFrames.map(formatItem).join('\n') : '_Şu an profil çerçevesi yok._',
+      },
+      {
+        name: '🔘 Avatar Çerçeveleri',
+        value: avatarFrames.length > 0 ? avatarFrames.map(formatItem).join('\n') : '_Şu an avatar çerçevesi yok._',
+      },
+      {
+        name: '🌄 Profil Arka Planları',
+        value: bgs.length > 0 ? bgs.map(formatItem).join('\n') : '_Şu an arka plan ürünü yok._',
       },
       {
         name: '💰 Mevcut Bakiyen',

@@ -57,7 +57,10 @@ function initializeDatabase() {
       balance         INTEGER NOT NULL DEFAULT 0,
       last_gave_at    INTEGER NOT NULL DEFAULT 0,
       active_color_id INTEGER DEFAULT NULL,
-      active_bg_id    INTEGER DEFAULT NULL
+      active_bg_id    INTEGER DEFAULT NULL,
+      active_name_color_id INTEGER DEFAULT NULL,
+      active_profile_frame_id INTEGER DEFAULT NULL,
+      active_avatar_frame_id INTEGER DEFAULT NULL
     );
 
     CREATE TABLE IF NOT EXISTS settings (
@@ -94,6 +97,9 @@ function initializeDatabase() {
     'ALTER TABLE reputation ADD COLUMN balance INTEGER NOT NULL DEFAULT 0',
     'ALTER TABLE reputation ADD COLUMN active_color_id INTEGER DEFAULT NULL',
     'ALTER TABLE reputation ADD COLUMN active_bg_id    INTEGER DEFAULT NULL',
+    'ALTER TABLE reputation ADD COLUMN active_name_color_id INTEGER DEFAULT NULL',
+    'ALTER TABLE reputation ADD COLUMN active_profile_frame_id INTEGER DEFAULT NULL',
+    'ALTER TABLE reputation ADD COLUMN active_avatar_frame_id INTEGER DEFAULT NULL',
     'ALTER TABLE market_items ADD COLUMN type      TEXT NOT NULL DEFAULT "color"',
     'ALTER TABLE market_items ADD COLUMN dataValue TEXT NOT NULL DEFAULT ""',
   ];
@@ -168,31 +174,62 @@ function initializeDatabase() {
   // Sonra isim/fiyat/URL'yi günceller.
   const bgItems = [
     // 💻 Kuantum & Donanım Serisi
-    { id: 3,  name: '💻 Hacker Terminali',     price: 500, url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=700&h=250&fit=crop' },
-    { id: 4,  name: '🔵 Çekirdek Devre',       price: 500, url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=700&h=250&fit=crop' },
-    { id: 5,  name: '🟣 Kuantum Ağı',          price: 500, url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=700&h=250&fit=crop' },
-    { id: 6,  name: '🌌 Derin Uzay',           price: 500, url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=700&h=250&fit=crop' },
-    { id: 7,  name: '⚡ Veri Akışı',           price: 500, url: 'https://images.unsplash.com/photo-1614729939124-032f0b56c9ce?q=80&w=700&h=250&fit=crop' },
+    { id: 3,  name: '💻 Hacker Terminali',     price: 250, url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=700&h=250&fit=crop' },
+    { id: 4,  name: '🔵 Çekirdek Devre',       price: 250, url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=700&h=250&fit=crop' },
+    { id: 5,  name: '🟣 Kuantum Ağı',          price: 250, url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=700&h=250&fit=crop' },
+    { id: 6,  name: '🌌 Derin Uzay',           price: 250, url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=700&h=250&fit=crop' },
+    { id: 7,  name: '⚡ Veri Akışı',           price: 250, url: 'https://images.unsplash.com/photo-1614729939124-032f0b56c9ce?q=80&w=700&h=250&fit=crop' },
     // 🌃 Siber Şehir Serisi
-    { id: 8,  name: '🏙️ Neon Tokyo',          price: 500, url: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=700&h=250&fit=crop' },
-    { id: 9,  name: '🌆 Karanlık Metropol',    price: 500, url: 'https://image.pollinations.ai/prompt/dark%20metropolis%20from%20above%20night%20aerial%20view%20cyberpunk%20city?width=700&height=250&nologo=true' },
-    { id: 10, name: '🌧️ Yağmurlu Gece Şehri', price: 500, url: 'https://images.unsplash.com/photo-1555448248-2571daf6344b?q=80&w=700&h=250&fit=crop' },
-    { id: 11, name: '🏢 Dev Gökdelenler',      price: 500, url: 'https://image.pollinations.ai/prompt/futuristic%20mega%20skyscrapers%20night%20cyberpunk%20cityscape%20neon?width=700&height=250&nologo=true' },
+    { id: 8,  name: '🏙️ Neon Tokyo',          price: 250, url: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=700&h=250&fit=crop' },
+    { id: 9,  name: '🌆 Karanlık Metropol',    price: 250, url: 'https://image.pollinations.ai/prompt/dark%20metropolis%20from%20above%20night%20aerial%20view%20cyberpunk%20city?width=700&height=250&nologo=true' },
+    { id: 10, name: '🌧️ Yağmurlu Gece Şehri', price: 250, url: 'https://images.unsplash.com/photo-1555448248-2571daf6344b?q=80&w=700&h=250&fit=crop' },
+    { id: 11, name: '🏢 Dev Gökdelenler',      price: 250, url: 'https://image.pollinations.ai/prompt/futuristic%20mega%20skyscrapers%20night%20cyberpunk%20cityscape%20neon?width=700&height=250&nologo=true' },
   ];
 
-  const bgUpsert = db.prepare(`
+  const genericUpsert = db.prepare(`
     INSERT INTO market_items (id, name, price, type, dataValue)
-    VALUES (?, ?, ?, 'bg', ?)
-    ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, type='bg', dataValue=excluded.dataValue
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, type=excluded.type, dataValue=excluded.dataValue
   `);
+  
   const bgSeed = db.transaction(() => {
     for (const item of bgItems) {
-      bgUpsert.run(item.id, item.name, item.price, item.url);
+      genericUpsert.run(item.id, item.name, item.price, 'bg', item.url);
     }
   });
   bgSeed();
 
-  console.log('[DB] Market urunleri senkronize edildi (2 renk + 9 arka plan).');
+  // ── Yeni Eşyalar (İsim Renkleri, Çerçeveler) ──────
+  const newItems = [
+    // İsim Renkleri (name_color) - 300
+    { id: 12, name: 'Hacker Red İsim Rengi', type: 'name_color', price: 300, val: '#FF003C' },
+    { id: 13, name: 'Matrix Green İsim Rengi', type: 'name_color', price: 300, val: '#00FF41' },
+    { id: 14, name: 'Cyber Blue İsim Rengi', type: 'name_color', price: 300, val: '#00F0FF' },
+    { id: 15, name: 'Neon Pink İsim Rengi', type: 'name_color', price: 300, val: '#FF00FF' },
+    // Profil Çerçeveleri (profile_frame) - 500
+    { id: 20, name: 'Sarı Profil Çerçevesi', type: 'profile_frame', price: 500, val: '#FFD700' },
+    { id: 21, name: 'Mavi Profil Çerçevesi', type: 'profile_frame', price: 500, val: '#00BFFF' },
+    { id: 22, name: 'Kırmızı Profil Çerçevesi', type: 'profile_frame', price: 500, val: '#FF2020' },
+    { id: 23, name: 'Yeşil Profil Çerçevesi', type: 'profile_frame', price: 500, val: '#00FF00' },
+    { id: 24, name: 'Mor Profil Çerçevesi', type: 'profile_frame', price: 500, val: '#8A2BE2' },
+    { id: 25, name: 'Beyaz Profil Çerçevesi', type: 'profile_frame', price: 500, val: '#FFFFFF' },
+    // Avatar Çerçeveleri (avatar_frame) - 300
+    { id: 30, name: 'Sarı Avatar Çerçevesi', type: 'avatar_frame', price: 300, val: '#FFD700' },
+    { id: 31, name: 'Mavi Avatar Çerçevesi', type: 'avatar_frame', price: 300, val: '#00BFFF' },
+    { id: 32, name: 'Kırmızı Avatar Çerçevesi', type: 'avatar_frame', price: 300, val: '#FF2020' },
+    { id: 33, name: 'Yeşil Avatar Çerçevesi', type: 'avatar_frame', price: 300, val: '#00FF00' },
+    { id: 34, name: 'Mor Avatar Çerçevesi', type: 'avatar_frame', price: 300, val: '#8A2BE2' },
+    { id: 35, name: 'Beyaz Avatar Çerçevesi', type: 'avatar_frame', price: 300, val: '#FFFFFF' },
+  ];
+
+  const newItemsSeed = db.transaction(() => {
+    for (const item of newItems) {
+      genericUpsert.run(item.id, item.name, item.price, item.type, item.val);
+    }
+  });
+  newItemsSeed();
+
+  console.log('[DB] Market urunleri senkronize edildi (2 rol, 9 bg, 4 isim, 6 profil_frame, 6 avatar_frame).');
   console.log(`[DB] Hazir → ${DB_PATH}`);
   return db;
 }
@@ -238,23 +275,38 @@ function getInventory(userId) {
 /**
  * Kullanıcının aktif eşyalarını döndürür.
  * @param {string} userId
- * @returns {{ active_color_id: number|null, active_bg_id: number|null }}
+ * @returns {object} { active_color_id, active_bg_id, active_name_color_id, active_profile_frame_id, active_avatar_frame_id }
  */
 function getActiveItems(userId) {
   const row = getDb()
-    .prepare('SELECT active_color_id, active_bg_id FROM reputation WHERE user_id = ?')
+    .prepare('SELECT active_color_id, active_bg_id, active_name_color_id, active_profile_frame_id, active_avatar_frame_id FROM reputation WHERE user_id = ?')
     .get(userId);
-  return row ?? { active_color_id: null, active_bg_id: null };
+  return row ?? { 
+    active_color_id: null, 
+    active_bg_id: null,
+    active_name_color_id: null,
+    active_profile_frame_id: null,
+    active_avatar_frame_id: null
+  };
 }
 
 /**
  * Kullanıcının aktif eşyasını günceller.
  * @param {string} userId
- * @param {'color'|'bg'} type - Eşya türü
+ * @param {'color'|'bg'|'name_color'|'profile_frame'|'avatar_frame'} type - Eşya türü
  * @param {number|null} itemId - null = çıkar
  */
 function setActiveItem(userId, type, itemId) {
-  const col = type === 'color' ? 'active_color_id' : 'active_bg_id';
+  let col;
+  switch (type) {
+    case 'color': col = 'active_color_id'; break;
+    case 'bg': col = 'active_bg_id'; break;
+    case 'name_color': col = 'active_name_color_id'; break;
+    case 'profile_frame': col = 'active_profile_frame_id'; break;
+    case 'avatar_frame': col = 'active_avatar_frame_id'; break;
+    default: return;
+  }
+  
   getDb().prepare('INSERT OR IGNORE INTO reputation (user_id) VALUES (?)').run(userId);
   getDb().prepare(`UPDATE reputation SET ${col} = ? WHERE user_id = ?`).run(itemId, userId);
 }

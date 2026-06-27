@@ -62,33 +62,41 @@ module.exports = {
     const avatarURL = target.displayAvatarURL({ extension: 'png', size: 256 });
 
     try {
-      // ── Aktif Arka Plan URL'sini Çek ──────────────────────
+      // ── Aktif Özelleştirmeleri Çek ──────────────────────
       let activeBgUrl = null;
+      let activeNameColorHex = null;
+      let activeProfileFrameHex = null;
+      let activeAvatarFrameHex = null;
+
       try {
         const actives = getActiveItems(target.id);
 
-        // DEBUG: Veritabanından okunan aktif arka plan ID'si
-        console.log(`DEBUG [profil/${target.username}]: DB'den okunan active_bg_id =`, actives.active_bg_id);
-
-        if (actives.active_bg_id == null) {
-          console.log(`DEBUG [profil/${target.username}]: Arka plan ID'si bulunamadı veya null — varsayılan gradyan kullanılacak.`);
-        } else {
-          const bgItem = getDb()
-            .prepare("SELECT dataValue FROM market_items WHERE id = ? AND type = 'bg'")
-            .get(actives.active_bg_id);
-
-          if (!bgItem) {
-            console.log(`DEBUG [profil/${target.username}]: active_bg_id=${actives.active_bg_id} için market_items'da kayıt bulunamadı.`);
-          } else if (!bgItem.dataValue || bgItem.dataValue.trim() === '') {
-            console.log(`DEBUG [profil/${target.username}]: market_items kaydı var ama dataValue boş/geçersiz.`);
-          } else {
-            activeBgUrl = bgItem.dataValue.trim();
-            console.log(`DEBUG [profil/${target.username}]: Çizilmeye çalışılan arka plan URL'si:`, activeBgUrl);
-          }
+        // Arka Plan
+        if (actives.active_bg_id) {
+          const item = getDb().prepare("SELECT dataValue FROM market_items WHERE id = ?").get(actives.active_bg_id);
+          if (item && item.dataValue) activeBgUrl = item.dataValue.trim();
         }
+        
+        // İsim Rengi
+        if (actives.active_name_color_id) {
+          const item = getDb().prepare("SELECT dataValue FROM market_items WHERE id = ?").get(actives.active_name_color_id);
+          if (item && item.dataValue) activeNameColorHex = item.dataValue.trim();
+        }
+        
+        // Profil Çerçevesi
+        if (actives.active_profile_frame_id) {
+          const item = getDb().prepare("SELECT dataValue FROM market_items WHERE id = ?").get(actives.active_profile_frame_id);
+          if (item && item.dataValue) activeProfileFrameHex = item.dataValue.trim();
+        }
+        
+        // Avatar Çerçevesi
+        if (actives.active_avatar_frame_id) {
+          const item = getDb().prepare("SELECT dataValue FROM market_items WHERE id = ?").get(actives.active_avatar_frame_id);
+          if (item && item.dataValue) activeAvatarFrameHex = item.dataValue.trim();
+        }
+
       } catch (dbErr) {
-        console.error(`[profil/${target.username}] DB'den arka plan okunurken hata:`, dbErr.message);
-        /* DB hatası varsa arka plan olmadan devam et */
+        console.error(`[profil/${target.username}] DB'den eşyalar okunurken hata:`, dbErr.message);
       }
 
       // ── Canvas ile Kart Üret ───────────────────────────────
@@ -99,8 +107,10 @@ module.exports = {
         balance,
         currentRank,
         nextRank,
-        activeBgUrl, // null ise varsayılan rütbe teması kullanılır
-        nameColor,   // kullanıcının discord rol rengi
+        activeBgUrl,
+        nameColor:       activeNameColorHex || nameColor, // Canvas ismi rengi, aktif yoksa discord rol rengi
+        profileFrameHex: activeProfileFrameHex,           // Custom profil çerçevesi rengi
+        avatarFrameHex:  activeAvatarFrameHex,            // Custom avatar çerçevesi rengi
       });
 
       // ── PNG Buffer'ı Discord'a Gönder ──────────────────────

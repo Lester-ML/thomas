@@ -79,7 +79,7 @@ function formatNumber(n) {
  * @param {string} [opts.nameColor]   - Kullanıcı adı rengi
  * @returns {Promise<Buffer>} PNG buffer
  */
-async function generateProfileCard({ username, avatarURL, rep, balance, currentRank, nextRank, activeBgUrl = null, nameColor = '#FFFFFF' }) {
+async function generateProfileCard({ username, avatarURL, rep, balance, currentRank, nextRank, activeBgUrl = null, nameColor = '#FFFFFF', profileFrameHex = null, avatarFrameHex = null }) {
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx    = canvas.getContext('2d');
   const theme  = getTierTheme(currentRank.name);
@@ -180,12 +180,14 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
   // ════════════════════════════════════════════════════════════
   // 2) KENAR ÇERÇEVESİ
   // ════════════════════════════════════════════════════════════
-  ctx.strokeStyle = theme.accent + 'AA';
+  const activeProfileBorder = profileFrameHex || theme.accent;
+
+  ctx.strokeStyle = activeProfileBorder + (profileFrameHex ? 'FF' : 'AA');
   ctx.lineWidth   = 2.5;
   ctx.strokeRect(3, 3, WIDTH - 6, HEIGHT - 6);
 
   // Sol accent dikey çizgi
-  ctx.strokeStyle = theme.accent;
+  ctx.strokeStyle = activeProfileBorder;
   ctx.lineWidth   = 4;
   ctx.beginPath();
   ctx.moveTo(3, 20);
@@ -198,7 +200,18 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
 
   // ── Dış parlak halka — Rütbeye özgü gradient ───────────────
   ctx.save();
-  if (isGodOfCode) {
+  if (avatarFrameHex) {
+    // Özel Avatar Çerçevesi (Market'ten)
+    const customGrad = ctx.createRadialGradient(
+      AV_X - 20, AV_Y - 20, 2,
+      AV_X, AV_Y, AV_RADIUS + 8
+    );
+    customGrad.addColorStop(0,   avatarFrameHex);
+    customGrad.addColorStop(0.6, avatarFrameHex + 'CC');
+    customGrad.addColorStop(1,   avatarFrameHex + '55');
+    circleClip(ctx, AV_X, AV_Y, AV_RADIUS + 8);
+    ctx.fillStyle = customGrad;
+  } else if (isGodOfCode) {
     // God of Code: Gökkuşağı gradient çerçeve
     const rainbowGrad = ctx.createLinearGradient(
       AV_X - AV_RADIUS - 8, AV_Y - AV_RADIUS - 8,
@@ -230,10 +243,11 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
 
   // ── Dış parıltı (glow) efekti ────────────────────────────────
   ctx.save();
-  ctx.shadowColor = isGodOfCode ? '#ffffff' : rankHex;
+  const glowColor = avatarFrameHex ? avatarFrameHex : (isGodOfCode ? '#ffffff' : rankHex);
+  ctx.shadowColor = glowColor;
   ctx.shadowBlur  = 18;
   circleClip(ctx, AV_X, AV_Y, AV_RADIUS + 8);
-  ctx.strokeStyle = isGodOfCode ? '#ffffff88' : rankHex + '88';
+  ctx.strokeStyle = avatarFrameHex ? avatarFrameHex + '88' : (isGodOfCode ? '#ffffff88' : rankHex + '88');
   ctx.lineWidth   = 2;
   ctx.stroke();
   ctx.shadowBlur  = 0;
