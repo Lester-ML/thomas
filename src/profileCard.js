@@ -80,7 +80,23 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
   // ── 1a) Özel arka plan resmi varsa önce onu çiz ───────────
   if (activeBgUrl) {
     try {
-      const bgImg = await loadImage(activeBgUrl);
+      // Unsplash gibi siteler bot isteklerini (User-Agent yoksa) 403 ile engeller.
+      // Bu yüzden önce resmi fetch ile indiriyoruz.
+      const response = await fetch(activeBgUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      const bgImg = await loadImage(buffer);
+      
       // Resmi canvas boyutunu kaplayacak şekilde çiz (cover mantığı)
       const scaleX = WIDTH  / bgImg.width;
       const scaleY = HEIGHT / bgImg.height;
