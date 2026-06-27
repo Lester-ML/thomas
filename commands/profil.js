@@ -74,7 +74,7 @@ module.exports = {
           console.log(`DEBUG [profil/${target.username}]: Arka plan ID'si bulunamadı veya null — varsayılan gradyan kullanılacak.`);
         } else {
           const bgItem = getDb()
-            .prepare('SELECT dataValue FROM market_items WHERE id = ? AND type = "bg"')
+            .prepare("SELECT dataValue FROM market_items WHERE id = ? AND type = 'bg'")
             .get(actives.active_bg_id);
 
           if (!bgItem) {
