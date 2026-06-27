@@ -1,0 +1,11 @@
+providers = ["node"]
+
+[phases.setup]
+# Node.js ortamını bozmadan sadece gerekli C++ derleme araçlarını APT ile kuruyoruz
+aptPkgs = ["python3", "build-essential"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[start]
+cmd = "node index.js"
