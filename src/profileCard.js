@@ -9,7 +9,18 @@
 //    const buffer = await generateProfileCard({ ... });
 // ============================================================
 
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+const path = require('path');
+
+// ── Yazı Tiplerini (Fonts) Kaydet ─────────────────────────────
+// Railway (Linux) sistemlerinde font bulamama sorununa karsi
+// projeye dahil ettigimiz TTF dosyalarini kullaniyoruz.
+try {
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Roboto-Regular.ttf'), 'Roboto');
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Roboto-Bold.ttf'), 'RobotoBold');
+} catch (e) {
+  console.error('[ProfileCard] Font yuklenirken hata (fallback kullanilacak):', e);
+}
 
 // ── Canvas Boyutları ──────────────────────────────────────────
 const WIDTH  = 700;
@@ -184,7 +195,7 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
 
   // ── Kullanıcı Adı ─────────────────────────────────────────
   ctx.fillStyle = '#FFFFFF';
-  ctx.font      = 'bold 34px sans-serif';
+  ctx.font      = '34px RobotoBold, sans-serif';
 
   // Uzun isimleri kırp
   let displayName = username;
@@ -200,7 +211,7 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
   ctx.shadowColor   = theme.accent + '88';
   ctx.shadowBlur    = 12;
   ctx.fillStyle     = theme.accent;
-  ctx.font          = 'bold 17px sans-serif';
+  ctx.font          = '17px RobotoBold, sans-serif';
   ctx.fillText(currentRank.name.toUpperCase(), TX, 98);
   ctx.shadowBlur    = 0;
 
@@ -222,36 +233,36 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
 
   // Etiket stili
   ctx.fillStyle = '#888888';
-  ctx.font      = '13px sans-serif';
+  ctx.font      = '13px Roboto, sans-serif';
   ctx.fillText('TOTAL REP', col1X, 140);
   ctx.fillText('CREDIT BALANCE', col2X, 140);
 
   // Değer stili
   ctx.fillStyle = '#FFFFFF';
-  ctx.font      = 'bold 30px sans-serif';
+  ctx.font      = '30px RobotoBold, sans-serif';
   ctx.fillText(formatNumber(rep), col1X, 178);
 
   ctx.fillStyle = '#FFD700';
-  ctx.font      = 'bold 30px sans-serif';
+  ctx.font      = '30px RobotoBold, sans-serif';
   ctx.fillText(formatNumber(balance), col2X, 178);
 
   // Küçük birim yazısı
   ctx.fillStyle = '#666666';
-  ctx.font      = '12px sans-serif';
+  ctx.font      = '12px Roboto, sans-serif';
   ctx.fillText('puan', col1X + ctx.measureText(formatNumber(rep)).width + 6, 178);
   ctx.fillText('kr',   col2X + ctx.measureText(formatNumber(balance)).width + 6, 178);
 
   // ── Sonraki Rütbe ─────────────────────────────────────────
   ctx.fillStyle = '#555555';
-  ctx.font      = '13px sans-serif';
+  ctx.font      = '13px Roboto, sans-serif';
   const nextText = nextRank
     ? `NEXT RANK: ${nextRank.name.toUpperCase()} (+${nextRank.minRep - rep} rep)`
     : 'MAX LEVEL REACHED  |  God of Code';
   ctx.fillText(nextText, TX, 225);
 
-  // ── Quantum Kratos Marka İzhi ─────────────────────────────
+  // ── Quantum Kratos Marka İzi ─────────────────────────────
   ctx.fillStyle = theme.accent + '55';
-  ctx.font      = 'bold 12px sans-serif';
+  ctx.font      = '12px RobotoBold, sans-serif';
   ctx.textAlign = 'right';
   ctx.fillText('KRATOS', WIDTH - 18, HEIGHT - 14);
   ctx.textAlign = 'left'; // sıfırla
