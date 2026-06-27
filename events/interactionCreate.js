@@ -5,7 +5,7 @@
 //    • Buton tıklamalarını (item_toggle_*) işler
 // ============================================================
 
-const { Events } = require('discord.js');
+const { Events, MessageFlags } = require('discord.js');
 const { getDb } = require('../src/database');
 
 module.exports = {
@@ -95,7 +95,7 @@ module.exports = {
       console.error(`[Interaction] '${interaction.commandName}' komutu bulunamadı.`);
       return interaction.reply({
         content: '❌ Bu komut tanımlı değil veya yüklenmedi.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -104,15 +104,23 @@ module.exports = {
     } catch (err) {
       console.error(`[Interaction] '${interaction.commandName}' çalışırken hata:`, err);
 
+      // 40060: Interaction zaten yanıtlanmış (çift instance vb.) → sessizce geç
+      if (err.code === 40060) return;
+
       const errorPayload = {
         content: '❌ Bu komut çalışırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       };
 
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(errorPayload);
-      } else {
-        await interaction.reply(errorPayload);
+      try {
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(errorPayload);
+        } else {
+          await interaction.reply(errorPayload);
+        }
+      } catch (replyErr) {
+        // Yanıt gönderilemedi (zaman aşımı vb.) — yalnızca logla, botu çökertme
+        console.error(`[Interaction] Hata yanıtı gönderilemedi:`, replyErr.message);
       }
     }
   },
