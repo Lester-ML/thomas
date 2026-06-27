@@ -13,13 +13,12 @@ const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 
 // ── Yazı Tiplerini (Fonts) Kaydet ─────────────────────────────
-// Railway (Linux) sistemlerinde font bulamama sorununa karsi
-// projeye dahil ettigimiz TTF dosyalarini kullaniyoruz.
 try {
-  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Roboto-Regular.ttf'), 'Roboto');
-  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Roboto-Bold.ttf'), 'RobotoBold');
+  // Alias kullanmadan direkt isimleriyle kaydediyoruz
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Roboto-Regular.ttf'));
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Roboto-Bold.ttf'));
 } catch (e) {
-  console.error('[ProfileCard] Font yuklenirken hata (fallback kullanilacak):', e);
+  console.error('[ProfileCard] Font yuklenirken hata:', e);
 }
 
 // ── Canvas Boyutları ──────────────────────────────────────────
@@ -91,7 +90,20 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
   // ── 1a) Özel arka plan resmi varsa önce onu çiz ───────────
   if (activeBgUrl) {
     try {
-      const bgImg = await loadImage(activeBgUrl);
+      // Unsplash gibi siteler bot/sunucu iplerini engellediği için (403)
+      // fetch ile User-Agent belirterek indiriyoruz
+      const res = await fetch(activeBgUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+      
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      
+      const arrayBuf = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuf);
+      const bgImg = await loadImage(buffer);
+
       // Resmi canvas boyutunu kaplayacak şekilde çiz (cover mantığı)
       const scaleX = WIDTH  / bgImg.width;
       const scaleY = HEIGHT / bgImg.height;
@@ -101,7 +113,8 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
       const dx     = (WIDTH  - dw) / 2;
       const dy     = (HEIGHT - dh) / 2;
       ctx.drawImage(bgImg, dx, dy, dw, dh);
-    } catch {
+    } catch (e) {
+      console.error('[ProfileCard] Arka plan resmi yuklenemedi:', e.message);
       // Resim yüklenemezse rütbe gradyanı kullan
       activeBgUrl = null;
     }
@@ -195,7 +208,7 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
 
   // ── Kullanıcı Adı ─────────────────────────────────────────
   ctx.fillStyle = '#FFFFFF';
-  ctx.font      = '34px RobotoBold, sans-serif';
+  ctx.font      = 'bold 34px "Roboto", sans-serif';
 
   // Uzun isimleri kırp
   let displayName = username;
@@ -211,7 +224,7 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
   ctx.shadowColor   = theme.accent + '88';
   ctx.shadowBlur    = 12;
   ctx.fillStyle     = theme.accent;
-  ctx.font          = '17px RobotoBold, sans-serif';
+  ctx.font          = 'bold 17px "Roboto", sans-serif';
   ctx.fillText(currentRank.name.toUpperCase(), TX, 98);
   ctx.shadowBlur    = 0;
 
@@ -233,28 +246,28 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
 
   // Etiket stili
   ctx.fillStyle = '#888888';
-  ctx.font      = '13px Roboto, sans-serif';
+  ctx.font      = '13px "Roboto", sans-serif';
   ctx.fillText('TOTAL REP', col1X, 140);
   ctx.fillText('CREDIT BALANCE', col2X, 140);
 
   // Değer stili
   ctx.fillStyle = '#FFFFFF';
-  ctx.font      = '30px RobotoBold, sans-serif';
+  ctx.font      = 'bold 30px "Roboto", sans-serif';
   ctx.fillText(formatNumber(rep), col1X, 178);
 
   ctx.fillStyle = '#FFD700';
-  ctx.font      = '30px RobotoBold, sans-serif';
+  ctx.font      = 'bold 30px "Roboto", sans-serif';
   ctx.fillText(formatNumber(balance), col2X, 178);
 
   // Küçük birim yazısı
   ctx.fillStyle = '#666666';
-  ctx.font      = '12px Roboto, sans-serif';
+  ctx.font      = '12px "Roboto", sans-serif';
   ctx.fillText('puan', col1X + ctx.measureText(formatNumber(rep)).width + 6, 178);
   ctx.fillText('kr',   col2X + ctx.measureText(formatNumber(balance)).width + 6, 178);
 
   // ── Sonraki Rütbe ─────────────────────────────────────────
   ctx.fillStyle = '#555555';
-  ctx.font      = '13px Roboto, sans-serif';
+  ctx.font      = '13px "Roboto", sans-serif';
   const nextText = nextRank
     ? `NEXT RANK: ${nextRank.name.toUpperCase()} (+${nextRank.minRep - rep} rep)`
     : 'MAX LEVEL REACHED  |  God of Code';
@@ -262,7 +275,7 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
 
   // ── Quantum Kratos Marka İzi ─────────────────────────────
   ctx.fillStyle = theme.accent + '55';
-  ctx.font      = '12px RobotoBold, sans-serif';
+  ctx.font      = 'bold 12px "Roboto", sans-serif';
   ctx.textAlign = 'right';
   ctx.fillText('KRATOS', WIDTH - 18, HEIGHT - 14);
   ctx.textAlign = 'left'; // sıfırla
