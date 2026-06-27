@@ -8,23 +8,43 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs   = require('fs');
 
-// Kalici veri klasoru — Railway Volume bu yolu mount etmeli
-const DATA_DIR = path.join(process.cwd(), 'data');
-const DB_PATH  = path.join(DATA_DIR, 'kratos.sqlite');
-
-// Klasor yoksa olustur (recursive: true → alt klasorleri de olusturur)
-fs.mkdirSync(DATA_DIR, { recursive: true });
+// ── Veritabanı Yolu — Railway Volume ile Uyumlu ────────────────
+// Öncelik sırası:
+//   1) Railway Environment Variables'dan DATABASE_PATH
+//   2) Varsayılan: /app/data/kratos.sqlite (Railway Volume mount noktası)
+// Railway Dashboard → Service → Variables → DATABASE_PATH = /app/data/kratos.sqlite
+const DB_PATH = process.env.DATABASE_PATH || '/app/data/kratos.sqlite';
 
 let db;
 
 /**
  * Veritabanı bağlantısını başlatır ve tabloları oluşturur.
+ * Railway Volume yoksa yerel klasör de oluşturulur.
  * @returns {Database} Hazır SQLite bağlantı nesnesi
  */
-function initDatabase() {
+function initializeDatabase() {
   if (db) return db; // Singleton — tekrar bağlanma
 
-  db = new Database(DB_PATH);
+  // ── Klasör Kontrolü (Yoksa Oluştur) ────────────────────
+  const dir = path.dirname(DB_PATH);
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`[DB] Klasör oluşturuldu: ${dir}`);
+    }
+  } catch (err) {
+    console.error(`[DB] Klasör oluşturulamadı: ${dir}`, err.message);
+    // Bot çökmeden devam etmeye çalış
+  }
+
+  // ── Veritabanı Bağlantısı ────────────────────────────
+  try {
+    db = new Database(DB_PATH);
+    console.log(`[DB] Veritabanı bağlantısı kuruldu: ${DB_PATH}`);
+  } catch (err) {
+    console.error('[DB] Veritabanı açılamadı:', err.message);
+    process.exit(1); // DB olmadan bot çalışamaz
+  }
 
   // WAL modu: Eş zamanlı okuma/yazma performansını artırır
   db.pragma('journal_mode = WAL');
@@ -133,9 +153,12 @@ function initDatabase() {
   bgSeed();
 
   console.log('[DB] Market urunleri senkronize edildi (2 renk + 9 arka plan).');
-  console.log('[DB] Veritabani baslatildi → database.sqlite');
+  console.log(`[DB] Hazir → ${DB_PATH}`);
   return db;
 }
+
+// initDatabase eski adıyla da çalışsın (geriye dönük uyumluluk)
+const initDatabase = initializeDatabase;
 
 /**
  * Hazır veritabanı bağlantısını döndürür.
@@ -212,7 +235,9 @@ function removeChannelMode(channelId) {
 }
 
 module.exports = {
-  initDatabase, getDb,
+  initDatabase,
+  initializeDatabase,
+  getDb,
   getSetting, setSetting,
   getInventory, getActiveItems, setActiveItem,
   getChannelMode, setChannelMode, removeChannelMode,
