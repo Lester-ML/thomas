@@ -8,6 +8,7 @@ const { Events, EmbedBuilder } = require('discord.js');
 const { giveRep, formatCooldown } = require('../src/repService');
 const { checkRank } = require('../src/rankService');
 const { getChannelMode } = require('../src/database');
+const { analyzeHelpMessage } = require('../src/aiService');
 
 // Spam takibi için bellekte geçici harita (userId -> { count, firstMessage })
 const spamTracker = new Map();
@@ -133,7 +134,66 @@ module.exports = {
         continue;
       }
 
-      // Rep vermeyi dene (cooldown + kayıt işlemi)
+      // ── Yanıt (Reply) Kontrolü ───────────────────────────────
+      if (!message.reference) {
+        await message.reply({
+          content: '🤖 Repütasyon verebilmek için yardım eden kişinin mesajına **yanıt (reply)** vererek teşekkür etmelisiniz. (Yapay zeka analizi için bu zorunludur.)',
+          allowedMentions: { repliedUser: false },
+        });
+        continue; // Bir sonraki etikete geç
+      }
+
+      // Yanıt verilen mesajı (Yardım edenin mesajı) çek
+      let answeredMessage;
+      try {
+        answeredMessage = await message.channel.messages.fetch(message.reference.messageId);
+      } catch (err) {
+        console.error('[AI Analizi] Yanıtlanan mesaj bulunamadı:', err);
+        continue;
+      }
+      
+      // Orijinal soruyu (eğer yanıtlanan mesaj da bir mesaja yanıtsa) çek
+      let originalQuestion = '';
+      if (answeredMessage.reference) {
+        try {
+          const originalMessage = await message.channel.messages.fetch(answeredMessage.reference.messageId);
+          originalQuestion = originalMessage.content;
+        } catch (err) {
+          // Orijinal soru silinmiş olabilir, sessizce devam et
+        }
+      }
+
+      // ── Yapay Zeka Analizi ───────────────────────────────────
+      // Analiz uzun sürebilir, geçici tepki ekle
+      await message.react('🤖').catch(() => {});
+
+      let isHelpful = false;
+      try {
+        isHelpful = await analyzeHelpMessage(originalQuestion, answeredMessage.content);
+      } catch (aiErr) {
+        if (aiErr.message === 'ALL_KEYS_EXHAUSTED') {
+          await message.reply({
+            content: '⚠️ AI Servisi şu an çok yoğun veya kotalar doldu. Puan işlemi gerçekleştirilemedi.',
+            allowedMentions: { repliedUser: false }
+          });
+        } else {
+          console.error('[AI Analizi] Beklenmeyen hata:', aiErr);
+        }
+        await message.reactions.removeAll().catch(() => {});
+        continue;
+      }
+
+      await message.reactions.removeAll().catch(() => {});
+
+      if (!isHelpful) {
+        await message.reply({
+          content: '❌ Yapay zeka bu mesajın teknik bir yardım içermediğini tespit etti. Puan verilmedi.',
+          allowedMentions: { repliedUser: false },
+        });
+        continue;
+      }
+
+      // ── Rep Vermeyi Dene (cooldown + kayıt işlemi) ─────────────
       const result = giveRep(message.author.id, targetId, 1);
 
       if (!result.success) {
@@ -153,6 +213,7 @@ module.exports = {
         .setColor(0x57f287) // Discord yeşili
         .setTitle('⭐ Repütasyon Verildi!')
         .setDescription(
+          `🤖 **Yapay zeka bu yardımı onayladı ✅**\n\n` +
           `${message.author} → ${targetUser} için **+1 rep** verdi!\n` +
           `${targetUser.username} artık **${result.newRep} rep** puanına sahip.`
         )
