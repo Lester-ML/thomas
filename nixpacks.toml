@@ -1,0 +1,9 @@
+[phases.setup]
+# better-sqlite3 native derleme için gerekli araçlar
+nixPkgs = ["python3", "gcc", "gnumake"]
+
+[phases.install]
+cmds = ["npm ci --build-from-source"]
+
+[start]
+cmd = "node index.js"
