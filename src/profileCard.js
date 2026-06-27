@@ -88,22 +88,45 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
   // 1) ARKA PLAN
   // ════════════════════════════════════════════════════════════
 
-  // ── 1a) Özel arka plan resmi varsa önce onu çiz ───────────
+  // ── 1a) Özel arka plan resmi varsa önce onu çiz ─────────────────
   if (activeBgUrl) {
+    // DEBUG: Çizilmeye çalışılan arka plan URL'si konsola bas
+    console.log('DEBUG: Çizilmeye çalışılan arka plan URL\'si:', activeBgUrl);
+
     try {
+      // URL format kontrolü — temel doğrulama
+      let parsedUrl;
+      try {
+        parsedUrl = new URL(activeBgUrl);
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+          throw new Error('Geçersiz protokol: ' + parsedUrl.protocol);
+        }
+      } catch (urlErr) {
+        throw new Error('Geçersiz URL formatı: ' + urlErr.message);
+      }
+
       // Unsplash gibi siteler bot/sunucu iplerini engellediği için (403)
       // fetch ile User-Agent belirterek indiriyoruz
+      console.log('DEBUG: Arka plan resmi indiriliyor...');
       const res = await fetch(activeBgUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
       });
-      
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText} — URL erişilebilir değil`);
+      }
+
       const arrayBuf = await res.arrayBuffer();
       const buffer = Buffer.from(arrayBuf);
-      const bgImg = await loadImage(buffer);
+
+      let bgImg;
+      try {
+        bgImg = await loadImage(buffer);
+      } catch (imgErr) {
+        throw new Error('loadImage başarısız (geçersiz resim formatı olabilir): ' + imgErr.message);
+      }
 
       // Resmi canvas boyutunu kaplayacak şekilde çiz (cover mantığı)
       const scaleX = WIDTH  / bgImg.width;
@@ -115,10 +138,12 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
       const dy     = (HEIGHT - dh) / 2;
       ctx.drawImage(bgImg, dx, dy, dw, dh);
     } catch (e) {
-      console.error('[ProfileCard] Arka plan resmi yuklenemedi:', e.message);
-      // Resim yüklenemezse rütbe gradyanı kullan
+      console.error('ARKA PLAN ÇİZİMİ BAŞARISIZ:', e.message);
+      // Resim yüklenemezse rütbe gradyanına dön — profil diğer kısımlarla çizilmeye devam eder
       activeBgUrl = null;
     }
+  } else {
+    console.log('DEBUG: Aktif arka plan URL\'si null — varsayılan rütbe gradyanı kullanılacak.');
   }
 
   // ── 1b) Tema gradyanı (arka plan yoksa tam dolu, varsa yarı saydam overlay) ─

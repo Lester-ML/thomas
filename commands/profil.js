@@ -66,13 +66,30 @@ module.exports = {
       let activeBgUrl = null;
       try {
         const actives = getActiveItems(target.id);
-        if (actives.active_bg_id) {
+
+        // DEBUG: Veritabanından okunan aktif arka plan ID'si
+        console.log(`DEBUG [profil/${target.username}]: DB'den okunan active_bg_id =`, actives.active_bg_id);
+
+        if (actives.active_bg_id == null) {
+          console.log(`DEBUG [profil/${target.username}]: Arka plan ID'si bulunamadı veya null — varsayılan gradyan kullanılacak.`);
+        } else {
           const bgItem = getDb()
             .prepare('SELECT dataValue FROM market_items WHERE id = ? AND type = "bg"')
             .get(actives.active_bg_id);
-          if (bgItem) activeBgUrl = bgItem.dataValue;
+
+          if (!bgItem) {
+            console.log(`DEBUG [profil/${target.username}]: active_bg_id=${actives.active_bg_id} için market_items'da kayıt bulunamadı.`);
+          } else if (!bgItem.dataValue || bgItem.dataValue.trim() === '') {
+            console.log(`DEBUG [profil/${target.username}]: market_items kaydı var ama dataValue boş/geçersiz.`);
+          } else {
+            activeBgUrl = bgItem.dataValue.trim();
+            console.log(`DEBUG [profil/${target.username}]: Çizilmeye çalışılan arka plan URL'si:`, activeBgUrl);
+          }
         }
-      } catch { /* DB hatası varsa arka plan olmadan devam et */ }
+      } catch (dbErr) {
+        console.error(`[profil/${target.username}] DB'den arka plan okunurken hata:`, dbErr.message);
+        /* DB hatası varsa arka plan olmadan devam et */
+      }
 
       // ── Canvas ile Kart Üret ───────────────────────────────
       const imageBuffer = await generateProfileCard({

@@ -103,23 +103,63 @@ function initializeDatabase() {
   }
 
   // ── Eski roleId → dataValue migration ────────────────────
+  // Eski şemada roleId NOT NULL vardı; yeni INSERT'ler bunu sağlamıyor → crash
+  // Çözüm: roleId sütunu varsa önce dataValue'ya kopyala, sonra roleId'yi NULL yapılabilir hale getir
   try {
     const cols = db.pragma('table_info(market_items)').map((c) => c.name);
     if (cols.includes('roleId')) {
-      db.exec(`UPDATE market_items SET dataValue = roleId WHERE dataValue = '' OR dataValue IS NULL`);
-      console.log('[DB] Migration: roleId -> dataValue kopyalandi.');
+      console.log('[DB] Eski roleId şeması tespit edildi, migration uygulanıyor...');
+      db.exec(`UPDATE market_items SET dataValue = roleId WHERE (dataValue = '' OR dataValue IS NULL) AND roleId IS NOT NULL`);
+      // roleId sütununun NOT NULL kısıtını kaldırmak için tabloyu yeniden oluştur
+      try {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS market_items_new (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            name      TEXT    NOT NULL,
+            price     INTEGER NOT NULL,
+            type      TEXT    NOT NULL DEFAULT 'color',
+            dataValue TEXT    NOT NULL DEFAULT ''
+          );
+          INSERT OR IGNORE INTO market_items_new (id, name, price, type, dataValue)
+            SELECT id, name, price,
+              COALESCE(type, 'color'),
+              COALESCE(NULLIF(dataValue, ''), roleId, '')
+            FROM market_items;
+          DROP TABLE market_items;
+          ALTER TABLE market_items_new RENAME TO market_items;
+        `);
+        console.log('[DB] Migration: roleId sütunu kaldırıldı, şema güncellendi.');
+      } catch (rebuildErr) {
+        console.error('[DB] Tablo yeniden oluşturma başarısız (zararsız):', rebuildErr.message);
+      }
     }
-  } catch { /* roleId sutunu yoksa gec */ }
+  } catch (migErr) { console.error('[DB] roleId migration hatası:', migErr.message); }
 
   // ── Renk Ürünleri (ID 1-2) — Upsert ─────────────────────
-  const colorUpsert = db.prepare(`
-    INSERT INTO market_items (id, name, price, type, dataValue)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, type=excluded.type, dataValue=excluded.dataValue
-  `);
+  // Önce sütun listesini kontrol et — eski şemada roleId hâlâ varsa ona da yaz
+  const colorUpsertCols = db.pragma('table_info(market_items)').map((c) => c.name);
+  const hasRoleId = colorUpsertCols.includes('roleId');
+
+  const colorUpsert = hasRoleId
+    ? db.prepare(`
+        INSERT INTO market_items (id, name, price, type, dataValue, roleId)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, type=excluded.type, dataValue=excluded.dataValue, roleId=excluded.roleId
+      `)
+    : db.prepare(`
+        INSERT INTO market_items (id, name, price, type, dataValue)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, type=excluded.type, dataValue=excluded.dataValue
+      `);
   const colorSeed = db.transaction(() => {
-    colorUpsert.run(1, '🍏 Matrix Yeşili', 300, 'color', '1520168372547883209');
-    colorUpsert.run(2, '🟣 Kuantum Moru',  500, 'color', '1520168823741747302');
+    if (hasRoleId) {
+      // Eski şema: roleId sütununa da değer ver (NOT NULL kısıtı için)
+      colorUpsert.run(1, '🍏 Matrix Yeşili', 300, 'color', '1520168372547883209', '1520168372547883209');
+      colorUpsert.run(2, '🟣 Kuantum Moru',  500, 'color', '1520168823741747302', '1520168823741747302');
+    } else {
+      colorUpsert.run(1, '🍏 Matrix Yeşili', 300, 'color', '1520168372547883209');
+      colorUpsert.run(2, '🟣 Kuantum Moru',  500, 'color', '1520168823741747302');
+    }
   });
   colorSeed();
 
