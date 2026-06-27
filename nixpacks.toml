@@ -1,8 +1,8 @@
 providers = ["node"]
 
 [phases.setup]
-# Node.js ortamını bozmadan sadece gerekli C++ derleme araçlarını APT ile kuruyoruz
-aptPkgs = ["python3", "build-essential"]
+# Node.js ortamını bozmadan sadece gerekli C++ derleme araçlarını ve Canvas font kütüphanelerini APT ile kuruyoruz
+aptPkgs = ["python3", "build-essential", "fontconfig", "fonts-liberation"]
 
 [phases.install]
 cmds = ["npm ci"]
