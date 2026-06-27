@@ -7,6 +7,7 @@
 const { Events, EmbedBuilder } = require('discord.js');
 const { giveRep, formatCooldown } = require('../src/repService');
 const { checkRank } = require('../src/rankService');
+const { getChannelMode } = require('../src/database');
 
 // Teşekkür ifadelerinin listesi (küçük harf, Türkçe odaklı)
 const THANK_YOU_WORDS = [
@@ -32,8 +33,37 @@ module.exports = {
     // Sunucu mesajı değilse yoksay (DM vb.)
     if (!message.guild) return;
 
-    // Etiketlenen kullanıcı var mı?
-    if (message.mentions.users.size === 0) return;
+    // ── 🛡️ Sohbet Engeli Kontrolü ────────────────────────────
+    // Kanal "sohbet-engelle" modundaysa slash olmayan mesajları sil
+    const channelMode = getChannelMode(message.channel.id);
+    if (channelMode === 'sohbet-engelle') {
+      try {
+        // Mesajı sil
+        await message.delete();
+      } catch {
+        // Silme yetkisi yoksa sessizce devam et
+      }
+
+      // Kullanıcıya özelden uyarı gönder
+      try {
+        const uyariEmbed = new EmbedBuilder()
+          .setColor(0xe74c3c)
+          .setTitle('⚠️ Mesajın Silindi!')
+          .setDescription(
+            `**${message.guild.name}** sunucusunda **#${message.channel.name}** kanalı şu anda **sohbet engellidir.**\n\n` +
+            '❌ Bu kanalda normal mesaj gönderemezsin.\n' +
+            '✅ Sadece **slash komutları** kullanabilirsin (örn: `/profil`, `/market`)'
+          )
+          .setFooter({ text: 'Anlayışın için teşekkürler 🙏' })
+          .setTimestamp();
+
+        await message.author.send({ embeds: [uyariEmbed] });
+      } catch {
+        // DM kapalıysa (kullanıcı engellemiş vb.) sessizce devam et
+      }
+
+      return; // Aşağıdaki rep mantığını çalıştırma
+    }
 
     // Mesaj teşekkür kelimesi içeriyor mu? (büyük/küçük harf duyarsız)
     const lowerContent = message.content.toLowerCase();

@@ -1,7 +1,12 @@
 // ============================================================
 //  commands/chat-koruma.js — /chat-koruma Slash Komutu
-//  Görev: Yöneticilerin bulundukları kanalı normal üyelerin
-//         mesaj yazımına kapatmasını veya açmasını sağlar.
+//  Görev: Yöneticilerin bulundukları kanalı yönetmesini sağlar.
+//
+//  Modlar:
+//    kapat          → @everyone SendMessages: false (tam kilit)
+//    sohbet-engelle → Mesajlar serbest ama normal mesaj yazanlar
+//                     uyarılır ve mesajları silinir (bot koruması)
+//    ac             → Tüm kısıtları kaldır
 // ============================================================
 
 const {
@@ -10,24 +15,25 @@ const {
   PermissionFlagsBits,
   MessageFlags,
 } = require('discord.js');
+const { setChannelMode, removeChannelMode } = require('../src/database');
 
 module.exports = {
   // ── Komut Tanımı ─────────────────────────────────────────
   data: new SlashCommandBuilder()
     .setName('chat-koruma')
-    .setDescription('(YÖNETİCİ) Bulunduğunuz kanalı normal üyelere kapatır veya açar.')
-    // Komutu yalnızca "Kanalları Yönet" ya da "Yönetici" yetkisi olanlara göster
+    .setDescription('(YÖNETİCİ) Bulunduğunuz kanalı normal üyelere kapatır, kısıtlar veya açar.')
     .setDefaultMemberPermissions(
       PermissionFlagsBits.ManageChannels | PermissionFlagsBits.Administrator
     )
     .addStringOption((option) =>
       option
         .setName('durum')
-        .setDescription('Kanalı kapat veya aç.')
+        .setDescription('Kanalı kapat, sohbeti engelle veya aç.')
         .setRequired(true)
         .addChoices(
-          { name: '🔒 Kapat', value: 'kapat' },
-          { name: '🔓 Aç',    value: 'ac'    }
+          { name: '🔒 Kapat  — Kimse mesaj yazamaz',                         value: 'kapat'          },
+          { name: '🛡️ Sohbet Engelle  — Sadece slash komutları kullanılabilir', value: 'sohbet-engelle' },
+          { name: '🔓 Aç  — Tüm kısıtları kaldır',                           value: 'ac'             }
         )
     ),
 
@@ -36,60 +42,69 @@ module.exports = {
     const { channel, guild, user, options } = interaction;
     const durum = options.getString('durum');
 
-    // Discord'un 3 saniyelik zaman aşımını önlemek için hemen ertele.
-    // permissionOverwrites.edit() bir API çağrısıdır ve zaman alabilir.
+    // Discord 3 saniyelik timeout'u önle
     await interaction.deferReply();
 
-    // Sunucudaki @everyone rolünü bul
     const everyoneRole = guild.roles.everyone;
 
     try {
+      // ── 🔒 KAPAT ─────────────────────────────────────────
       if (durum === 'kapat') {
-        // @everyone için SendMessages iznini kapat (false)
-        await channel.permissionOverwrites.edit(everyoneRole, {
-          SendMessages: false,
+        await channel.permissionOverwrites.edit(everyoneRole, { SendMessages: false });
+        setChannelMode(channel.id, 'kapat');
+
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xe74c3c)
+              .setTitle('🔒 Kanal Kilitlendi')
+              .setDescription('Bu kanal geçici olarak yöneticiler tarafından **mesaj yazımına kapatılmıştır.**')
+              .setFooter({ text: `İşlemi yapan: ${user.tag}`, iconURL: user.displayAvatarURL({ dynamic: true }) })
+              .setTimestamp(),
+          ],
         });
 
-        const kapalıEmbed = new EmbedBuilder()
-          .setColor(0xe74c3c) // Kırmızı
-          .setTitle('🔒 Kanal Kilitlendi')
-          .setDescription(
-            'Bu kanal geçici olarak yöneticiler tarafından mesaj yazımına kapatılmıştır.'
-          )
-          .setFooter({
-            text: `İşlemi yapan: ${user.tag}`,
-            iconURL: user.displayAvatarURL({ dynamic: true }),
-          })
-          .setTimestamp();
+      // ── 🛡️ SOHBET ENGELLE ────────────────────────────────
+      } else if (durum === 'sohbet-engelle') {
+        // SendMessages iznini varsayılana bırak (yazabilirler),
+        // bot mesajları silecek ve DM uyarısı atacak.
+        await channel.permissionOverwrites.edit(everyoneRole, { SendMessages: null });
+        setChannelMode(channel.id, 'sohbet-engelle');
 
-        await interaction.editReply({ embeds: [kapalıEmbed] });
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xe67e22)
+              .setTitle('🛡️ Sohbet Engeli Aktif')
+              .setDescription(
+                'Bu kanalda artık **sadece slash komutları** kullanılabilir.\n' +
+                'Normal mesaj atan üyeler **uyarı alacak** ve mesajları **silinecek.**'
+              )
+              .setFooter({ text: `İşlemi yapan: ${user.tag}`, iconURL: user.displayAvatarURL({ dynamic: true }) })
+              .setTimestamp(),
+          ],
+        });
+
+      // ── 🔓 AÇ ────────────────────────────────────────────
       } else {
-        // @everyone için SendMessages iznini varsayılana döndür (null)
-        await channel.permissionOverwrites.edit(everyoneRole, {
-          SendMessages: null,
+        await channel.permissionOverwrites.edit(everyoneRole, { SendMessages: null });
+        removeChannelMode(channel.id);
+
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x2ecc71)
+              .setTitle('🔓 Kanal Açıldı')
+              .setDescription('Kanalın tüm kısıtları kaldırıldı, üyeler tekrar serbestçe mesaj gönderebilir.')
+              .setFooter({ text: `İşlemi yapan: ${user.tag}`, iconURL: user.displayAvatarURL({ dynamic: true }) })
+              .setTimestamp(),
+          ],
         });
-
-        const açıkEmbed = new EmbedBuilder()
-          .setColor(0x2ecc71) // Yeşil
-          .setTitle('🔓 Kanal Açıldı')
-          .setDescription(
-            'Kanalın kilidi kaldırıldı, üyeler tekrar mesaj gönderebilir.'
-          )
-          .setFooter({
-            text: `İşlemi yapan: ${user.tag}`,
-            iconURL: user.displayAvatarURL({ dynamic: true }),
-          })
-          .setTimestamp();
-
-        await interaction.editReply({ embeds: [açıkEmbed] });
       }
     } catch (hata) {
-      console.error('[chat-koruma] İzin güncellenirken hata oluştu:', hata);
-
-      // Interaction zaten deferReply ile ertelendi → editReply kullan
+      console.error('[chat-koruma] İşlem sırasında hata:', hata);
       await interaction.editReply({
-        content:
-          '❌ Kanal izinleri güncellenirken bir hata oluştu. Botun **Kanalları Yönet** yetkisine sahip olduğundan emin olun.',
+        content: '❌ Kanal izinleri güncellenirken bir hata oluştu. Botun **Kanalları Yönet** yetkisine sahip olduğundan emin olun.',
         flags: MessageFlags.Ephemeral,
       });
     }

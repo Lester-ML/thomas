@@ -55,6 +55,11 @@ function initDatabase() {
       PRIMARY KEY (user_id, item_id),
       FOREIGN KEY (item_id) REFERENCES market_items(id)
     );
+
+    CREATE TABLE IF NOT EXISTS locked_channels (
+      channel_id TEXT PRIMARY KEY,
+      mode       TEXT NOT NULL
+    );
   `);
 
   // ── Mevcut veritabanlarına balance sütunu ekle (migration) ──
@@ -138,4 +143,31 @@ function setSetting(key, value) {
   getDb().prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value);
 }
 
-module.exports = { initDatabase, getDb, getSetting, setSetting };
+/**
+ * Bir kanalın kilit modunu döndürür.
+ * @param {string} channelId
+ * @returns {'kapat'|'sohbet-engelle'|null}
+ */
+function getChannelMode(channelId) {
+  const row = getDb().prepare('SELECT mode FROM locked_channels WHERE channel_id = ?').get(channelId);
+  return row ? row.mode : null;
+}
+
+/**
+ * Bir kanalın kilit modunu ayarlar.
+ * @param {string} channelId
+ * @param {string} mode - 'kapat' | 'sohbet-engelle'
+ */
+function setChannelMode(channelId, mode) {
+  getDb().prepare('INSERT OR REPLACE INTO locked_channels (channel_id, mode) VALUES (?, ?)').run(channelId, mode);
+}
+
+/**
+ * Bir kanalı kilit listesinden kaldırır (açma işlemi).
+ * @param {string} channelId
+ */
+function removeChannelMode(channelId) {
+  getDb().prepare('DELETE FROM locked_channels WHERE channel_id = ?').run(channelId);
+}
+
+module.exports = { initDatabase, getDb, getSetting, setSetting, getChannelMode, setChannelMode, removeChannelMode };
