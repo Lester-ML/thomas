@@ -1,7 +1,16 @@
 # Reputation Bot - Git Ignore
+
 node_modules/
 .env
+
+# SQLite veritabani dosyalari (Railway Volume'da tutuluyor)
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+
+# Eski veritabani dosyalari (kök dizininde kalan)
 database.sqlite
 database.sqlite-shm
 database.sqlite-wal
+
 *.log

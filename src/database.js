@@ -6,9 +6,14 @@
 
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs   = require('fs');
 
-// Veritabanı dosyasını proje kök dizininde oluştur
-const DB_PATH = path.join(__dirname, '..', 'database.sqlite');
+// Kalici veri klasoru — Railway Volume bu yolu mount etmeli
+const DATA_DIR = path.join(process.cwd(), 'data');
+const DB_PATH  = path.join(DATA_DIR, 'kratos.sqlite');
+
+// Klasor yoksa olustur (recursive: true → alt klasorleri de olusturur)
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let db;
 

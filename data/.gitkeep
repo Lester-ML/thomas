@@ -1,0 +1,3 @@
+# Bu dosya data/ klasörünü git'e eklemek için burada.
+# SQLite dosyaları (.sqlite, .sqlite-shm, .sqlite-wal) .gitignore ile hariç tutulur.
+# Railway üzerinde bu klasör kalıcı Volume olarak mount edilmelidir.

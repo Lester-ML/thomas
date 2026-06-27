@@ -1,0 +1,11 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "node index.js"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Railway Volume bu servis için /app/data dizinine mount edilmeli.
+# Railway Dashboard → Service → Volumes → Add Volume → Mount Path: /app/data
+# Bu sayede her restart'ta kratos.sqlite dosyası korunur.
