@@ -9,6 +9,9 @@ const { giveRep, formatCooldown } = require('../src/repService');
 const { checkRank } = require('../src/rankService');
 const { getChannelMode } = require('../src/database');
 
+// Spam takibi için bellekte geçici harita (userId -> { count, firstMessage })
+const spamTracker = new Map();
+
 // Teşekkür ifadelerinin listesi (küçük harf, Türkçe odaklı)
 const THANK_YOU_WORDS = [
   'teşekkür',
@@ -44,7 +47,46 @@ module.exports = {
         // Silme yetkisi yoksa sessizce devam et
       }
 
-      // Kullanıcıya özelden uyarı gönder
+      // ── Spam Kontrolü (4 mesajdan sonra 5 dk Timeout) ─────
+      const now = Date.now();
+      const SPAM_WINDOW = 15000; // 15 saniyelik pencere
+      const SPAM_LIMIT = 4;
+      
+      let userData = spamTracker.get(message.author.id) || { count: 0, firstMessage: now };
+      
+      if (now - userData.firstMessage > SPAM_WINDOW) {
+        // Süre geçtiyse sıfırla
+        userData = { count: 1, firstMessage: now };
+      } else {
+        userData.count += 1;
+      }
+      spamTracker.set(message.author.id, userData);
+
+      if (userData.count >= SPAM_LIMIT) {
+        // Sınır aşıldı -> 5 dakika timeout (300.000 ms)
+        try {
+          const member = await message.guild.members.fetch(message.author.id);
+          if (member.moderatable) {
+            await member.timeout(5 * 60 * 1000, 'Komut kanalında spam yapma');
+            
+            // Özelden ekstra ban mesajı gönder
+            const banEmbed = new EmbedBuilder()
+              .setColor(0x992d22)
+              .setTitle('🚫 Susturuldun (Timeout)!')
+              .setDescription(`**${message.guild.name}** sunucusunda komut kanalını spamladığın için **5 dakika** boyunca tüm kanallarda susturuldun. Lütfen kurallara uy.`)
+              .setTimestamp();
+            await message.author.send({ embeds: [banEmbed] }).catch(() => {});
+          }
+        } catch (err) {
+          console.error('[SpamKoruma] Timeout atılamadı:', err);
+        }
+        
+        // Ceza sonrası sayacı sıfırla ki üst üste ceza yemeye çalışıp hata atmasın
+        spamTracker.delete(message.author.id);
+        return; // İşlemi bitir (normal uyarıyı gönderme)
+      }
+
+      // ── Normal Uyarı (İlk 3 mesaj için) ───────────────────
       try {
         const uyariEmbed = new EmbedBuilder()
           .setColor(0xe74c3c)
@@ -52,14 +94,15 @@ module.exports = {
           .setDescription(
             `**${message.guild.name}** sunucusunda **#${message.channel.name}** kanalı şu anda **sohbet engellidir.**\n\n` +
             '❌ Bu kanalda normal mesaj gönderemezsin.\n' +
-            '✅ Sadece **slash komutları** kullanabilirsin (örn: `/profil`, `/market`)'
+            '✅ Sadece **slash komutları** kullanabilirsin (örn: `/profil`, `/market`)\n\n' +
+            `*Not: Spam yapmaya devam edersen (**${userData.count}/${SPAM_LIMIT}**) 5 dakika susturulacaksın!*`
           )
           .setFooter({ text: 'Anlayışın için teşekkürler 🙏' })
           .setTimestamp();
 
         await message.author.send({ embeds: [uyariEmbed] });
       } catch {
-        // DM kapalıysa (kullanıcı engellemiş vb.) sessizce devam et
+        // DM kapalıysa sessizce devam et
       }
 
       return; // Aşağıdaki rep mantığını çalıştırma
