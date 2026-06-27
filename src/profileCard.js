@@ -90,7 +90,8 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
       const dx     = (WIDTH  - dw) / 2;
       const dy     = (HEIGHT - dh) / 2;
       ctx.drawImage(bgImg, dx, dy, dw, dh);
-    } catch {
+    } catch (err) {
+      console.error(`[DEBUG - Canvas] ARKA PLAN ÇİZİMİ BAŞARISIZ: URL (${activeBgUrl}) yüklenemedi | Hata: ${err.message}`);
       // Resim yüklenemezse rütbe gradyanı kullan
       activeBgUrl = null;
     }

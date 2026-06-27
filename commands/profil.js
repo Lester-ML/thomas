@@ -61,9 +61,16 @@ module.exports = {
           const bgItem = getDb()
             .prepare('SELECT dataValue FROM market_items WHERE id = ? AND type = "bg"')
             .get(actives.active_bg_id);
+            
+          console.log(`[DEBUG - Profil] Kullanıcı: ${target.username}, Aktif BG ID: ${actives.active_bg_id}, Çekilen URL: ${bgItem ? bgItem.dataValue : 'YOK'}`);
+          
           if (bgItem) activeBgUrl = bgItem.dataValue;
+        } else {
+          console.log(`[DEBUG - Profil] Kullanıcı: ${target.username}, Aktif BG ID yok (Kuşanmamış veya null).`);
         }
-      } catch { /* DB hatası varsa arka plan olmadan devam et */ }
+      } catch (dbErr) {
+        console.error(`[DEBUG - Profil] Veritabanı okuma hatası:`, dbErr.message);
+      }
 
       // ── Canvas ile Kart Üret ───────────────────────────────
       const imageBuffer = await generateProfileCard({
