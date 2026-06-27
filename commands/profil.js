@@ -36,6 +36,15 @@ module.exports = {
       });
     }
 
+    // Üyenin Discord sunucusundaki rengini al (Marketten alınan rol rengini yansıtmak için)
+    let nameColor = '#FFFFFF';
+    try {
+      const member = await interaction.guild.members.fetch(target.id);
+      if (member && member.displayHexColor !== '#000000') {
+        nameColor = member.displayHexColor;
+      }
+    } catch { /* Member bulunamazsa varsayılan beyaz kalır */ }
+
     // Kartı oluşturmak biraz sürebilir — hemen "işleniyor" göster
     await interaction.deferReply();
 
@@ -74,6 +83,7 @@ module.exports = {
         currentRank,
         nextRank,
         activeBgUrl, // null ise varsayılan rütbe teması kullanılır
+        nameColor,   // kullanıcının discord rol rengi
       });
 
       // ── PNG Buffer'ı Discord'a Gönder ──────────────────────

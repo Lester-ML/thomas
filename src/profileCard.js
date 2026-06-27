@@ -76,9 +76,10 @@ function formatNumber(n) {
  * @param {object} opts.currentRank   - rankConfig'den gelen rank nesnesi
  * @param {object|null} opts.nextRank - Bir sonraki rank (null ise max level)
  * @param {string|null} [opts.activeBgUrl] - Aktif arka plan resim URL'si (null = rütbe teması)
+ * @param {string} [opts.nameColor]   - Kullanıcı adı rengi
  * @returns {Promise<Buffer>} PNG buffer
  */
-async function generateProfileCard({ username, avatarURL, rep, balance, currentRank, nextRank, activeBgUrl = null }) {
+async function generateProfileCard({ username, avatarURL, rep, balance, currentRank, nextRank, activeBgUrl = null, nameColor = '#FFFFFF' }) {
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx    = canvas.getContext('2d');
   const theme  = getTierTheme(currentRank.name);
@@ -207,7 +208,7 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
   const TX = 235;  // Metin başlangıç X koordinatı
 
   // ── Kullanıcı Adı ─────────────────────────────────────────
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = nameColor; // Marketten alınan Discord rol rengi
   ctx.font      = 'bold 34px "Roboto", sans-serif';
 
   // Uzun isimleri kırp
