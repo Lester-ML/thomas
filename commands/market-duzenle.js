@@ -9,8 +9,10 @@ const {
   SlashCommandBuilder,
   EmbedBuilder,
   PermissionFlagsBits,
+  MessageFlags,
 } = require('discord.js');
 const { getDb } = require('../src/database');
+
 
 module.exports = {
   // ── Komut Tanımı ─────────────────────────────────────────
@@ -54,7 +56,7 @@ module.exports = {
     if (!item) {
       return interaction.reply({
         content: `❌ **ID: ${urunId}** numaralı ürün bulunamadı.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -76,11 +78,11 @@ module.exports = {
       .setColor(0x5865f2)
       .setTitle('✅ Ürün Fiyatı Güncellendi')
       .addFields(
-        { name: '🛒 Ürün',         value: `**${item.name}**`,              inline: true },
-        { name: '🔖 ID',           value: `\`${urunId}\``,                 inline: true },
-        { name: '\u200B',           value: '\u200B',                        inline: true },
-        { name: '📉 Eski Fiyat',   value: `~~${eskiFiyat}~~ kredi`,        inline: true },
-        { name: '📈 Yeni Fiyat',   value: `**${yeniFiyat} kredi**`,        inline: true },
+        { name: '🛍️ Ürün',       value: `**${item.name}**`,                                           inline: true },
+        { name: '🔖 ID',          value: `\`${urunId}\``,                                                  inline: true },
+        { name: '🏷️ Tür',         value: item.type === 'color' ? '🎨 İsim Rengi' : '🖼️ Arka Plan', inline: true },
+        { name: '📉 Eski Fiyat', value: `~~${eskiFiyat}~~ kredi`,                                       inline: true },
+        { name: '📈 Yeni Fiyat', value: `**${yeniFiyat} kredi**`,                                       inline: true },
       )
       .setFooter({
         text: `Güncelleyen: ${interaction.user.tag}`,

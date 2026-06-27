@@ -9,6 +9,7 @@ const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
 const { getUserRep }          = require('../src/repService');
 const { getRankForRep, getNextRank } = require('../src/rankConfig');
 const { generateProfileCard } = require('../src/profileCard');
+const { getActiveItems, getDb } = require('../src/database');
 
 module.exports = {
   // ── Komut Tanımı ─────────────────────────────────────────
@@ -52,6 +53,18 @@ module.exports = {
     const avatarURL = target.displayAvatarURL({ extension: 'png', size: 256 });
 
     try {
+      // ── Aktif Arka Plan URL'sini Çek ──────────────────────
+      let activeBgUrl = null;
+      try {
+        const actives = getActiveItems(target.id);
+        if (actives.active_bg_id) {
+          const bgItem = getDb()
+            .prepare('SELECT dataValue FROM market_items WHERE id = ? AND type = "bg"')
+            .get(actives.active_bg_id);
+          if (bgItem) activeBgUrl = bgItem.dataValue;
+        }
+      } catch { /* DB hatası varsa arka plan olmadan devam et */ }
+
       // ── Canvas ile Kart Üret ───────────────────────────────
       const imageBuffer = await generateProfileCard({
         username:    target.username,
@@ -60,6 +73,7 @@ module.exports = {
         balance,
         currentRank,
         nextRank,
+        activeBgUrl, // null ise varsayılan rütbe teması kullanılır
       });
 
       // ── PNG Buffer'ı Discord'a Gönder ──────────────────────

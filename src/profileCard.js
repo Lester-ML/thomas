@@ -65,20 +65,50 @@ function formatNumber(n) {
  * @param {number} opts.balance       - Market bakiyesi
  * @param {object} opts.currentRank   - rankConfig'den gelen rank nesnesi
  * @param {object|null} opts.nextRank - Bir sonraki rank (null ise max level)
+ * @param {string|null} [opts.activeBgUrl] - Aktif arka plan resim URL'si (null = rütbe teması)
  * @returns {Promise<Buffer>} PNG buffer
  */
-async function generateProfileCard({ username, avatarURL, rep, balance, currentRank, nextRank }) {
+async function generateProfileCard({ username, avatarURL, rep, balance, currentRank, nextRank, activeBgUrl = null }) {
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx    = canvas.getContext('2d');
   const theme  = getTierTheme(currentRank.name);
 
   // ════════════════════════════════════════════════════════════
-  // 1) ARKA PLAN — Çapraz Gradyan
+  // 1) ARKA PLAN
   // ════════════════════════════════════════════════════════════
+
+  // ── 1a) Özel arka plan resmi varsa önce onu çiz ───────────
+  if (activeBgUrl) {
+    try {
+      const bgImg = await loadImage(activeBgUrl);
+      // Resmi canvas boyutunu kaplayacak şekilde çiz (cover mantığı)
+      const scaleX = WIDTH  / bgImg.width;
+      const scaleY = HEIGHT / bgImg.height;
+      const scale  = Math.max(scaleX, scaleY);
+      const dw     = bgImg.width  * scale;
+      const dh     = bgImg.height * scale;
+      const dx     = (WIDTH  - dw) / 2;
+      const dy     = (HEIGHT - dh) / 2;
+      ctx.drawImage(bgImg, dx, dy, dw, dh);
+    } catch {
+      // Resim yüklenemezse rütbe gradyanı kullan
+      activeBgUrl = null;
+    }
+  }
+
+  // ── 1b) Tema gradyanı (arka plan yoksa tam dolu, varsa yarı saydam overlay) ─
   const bg = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-  bg.addColorStop(0,    theme.primary + 'DD');  // Sol üst — canlı renk
-  bg.addColorStop(0.45, theme.dark);            // Orta — koyu geçiş
-  bg.addColorStop(1,    '#000000');             // Sağ alt — tam siyah
+  if (activeBgUrl) {
+    // Arka plan resmi üzerine koyu yarı saydam overlay — metinler okunabilsin
+    bg.addColorStop(0,    theme.primary + '99');
+    bg.addColorStop(0.45, theme.dark    + 'BB');
+    bg.addColorStop(1,    '#000000CC');
+  } else {
+    // Resim yok — tam opak gradyan (eski davranış)
+    bg.addColorStop(0,    theme.primary + 'DD');
+    bg.addColorStop(0.45, theme.dark);
+    bg.addColorStop(1,    '#000000');
+  }
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
