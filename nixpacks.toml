@@ -1,6 +1,6 @@
 [phases.setup]
-# better-sqlite3 native derleme için gerekli araçlar
-nixPkgs = ["python3", "gcc", "gnumake"]
+# better-sqlite3 için derleme araçları ve Canvas için font paketleri
+nixPkgs = ["python3", "gcc", "gnumake", "fontconfig", "dejavu_fonts"]
 
 [phases.install]
 cmds = ["npm ci --build-from-source"]
