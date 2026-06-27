@@ -1,5 +1,5 @@
 [phases.setup]
-# better-sqlite3 için derleme araçları
+# better-sqlite3 native derleme için gerekli araçlar
 nixPkgs = ["python3", "gcc", "gnumake"]
 
 [phases.install]
