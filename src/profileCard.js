@@ -84,6 +84,13 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
   const ctx    = canvas.getContext('2d');
   const theme  = getTierTheme(currentRank.name);
 
+  // ── Rütbeye Özgü Çerçeve Rengi ───────────────────────────────
+  // rankConfig.js'deki color alanı (0xRRGGBB) → CSS hex string'e çevir
+  const rankHex = '#' + currentRank.color.toString(16).padStart(6, '0');
+
+  // God of Code için özel gökkuşağı efekti
+  const isGodOfCode = currentRank.name === 'God of Code';
+
   // ════════════════════════════════════════════════════════════
   // 1) ARKA PLAN
   // ════════════════════════════════════════════════════════════
@@ -189,14 +196,50 @@ async function generateProfileCard({ username, avatarURL, rep, balance, currentR
   // 3) AVATAR — Daire Şeklinde, Rütbe Renkli Çerçeve
   // ════════════════════════════════════════════════════════════
 
-  // Dış parlak halka (accent rengi)
+  // ── Dış parlak halka — Rütbeye özgü gradient ───────────────
   ctx.save();
-  circleClip(ctx, AV_X, AV_Y, AV_RADIUS + 8);
-  ctx.fillStyle = theme.accent;
+  if (isGodOfCode) {
+    // God of Code: Gökkuşağı gradient çerçeve
+    const rainbowGrad = ctx.createLinearGradient(
+      AV_X - AV_RADIUS - 8, AV_Y - AV_RADIUS - 8,
+      AV_X + AV_RADIUS + 8, AV_Y + AV_RADIUS + 8
+    );
+    rainbowGrad.addColorStop(0,    '#ff0000');
+    rainbowGrad.addColorStop(0.17, '#ff8800');
+    rainbowGrad.addColorStop(0.33, '#ffff00');
+    rainbowGrad.addColorStop(0.50, '#00ff00');
+    rainbowGrad.addColorStop(0.67, '#0088ff');
+    rainbowGrad.addColorStop(0.83, '#8800ff');
+    rainbowGrad.addColorStop(1,    '#ff0088');
+    circleClip(ctx, AV_X, AV_Y, AV_RADIUS + 8);
+    ctx.fillStyle = rainbowGrad;
+  } else {
+    // Diğer rütbeler: Rütbe rengi ile parlak radyal gradient
+    const ringGrad = ctx.createRadialGradient(
+      AV_X - 20, AV_Y - 20, 2,
+      AV_X, AV_Y, AV_RADIUS + 8
+    );
+    ringGrad.addColorStop(0,   rankHex);
+    ringGrad.addColorStop(0.6, rankHex + 'CC');
+    ringGrad.addColorStop(1,   rankHex + '55');
+    circleClip(ctx, AV_X, AV_Y, AV_RADIUS + 8);
+    ctx.fillStyle = ringGrad;
+  }
   ctx.fill();
   ctx.restore();
 
-  // İç koyu halka (ince boşluk)
+  // ── Dış parıltı (glow) efekti ────────────────────────────────
+  ctx.save();
+  ctx.shadowColor = isGodOfCode ? '#ffffff' : rankHex;
+  ctx.shadowBlur  = 18;
+  circleClip(ctx, AV_X, AV_Y, AV_RADIUS + 8);
+  ctx.strokeStyle = isGodOfCode ? '#ffffff88' : rankHex + '88';
+  ctx.lineWidth   = 2;
+  ctx.stroke();
+  ctx.shadowBlur  = 0;
+  ctx.restore();
+
+  // ── İç koyu halka (ince boşluk) ──────────────────────────────
   ctx.save();
   circleClip(ctx, AV_X, AV_Y, AV_RADIUS + 4);
   ctx.fillStyle = '#111111';
