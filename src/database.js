@@ -24,7 +24,7 @@ function initDatabase() {
   // WAL modu: Eş zamanlı okuma/yazma performansını artırır
   db.pragma('journal_mode = WAL');
 
-  // ── Kullanıcı Repütasyon Tablosu ──────────────────────────
+  // ── Tablolar ──────────────────────────────────────────────
   db.exec(`
     CREATE TABLE IF NOT EXISTS reputation (
       user_id         TEXT    PRIMARY KEY,
@@ -65,9 +65,6 @@ function initDatabase() {
   `);
 
   // ── Migration: Eski sütun yapısını güncelle ───────────────
-  // Her ALTER TABLE ifadesi try/catch ile sarılmış;
-  // sütun zaten varsa SQLite hata fırlatır, biz sessizce geçeriz.
-
   const migrations = [
     'ALTER TABLE reputation ADD COLUMN balance INTEGER NOT NULL DEFAULT 0',
     'ALTER TABLE reputation ADD COLUMN active_color_id INTEGER DEFAULT NULL',
@@ -80,52 +77,58 @@ function initDatabase() {
     try { db.exec(sql); } catch { /* Sütun zaten mevcut — normal durum */ }
   }
 
-  // ── Eski roleId sütununu dataValue'ya taşı (one-time migration) ─
+  // ── Eski roleId → dataValue migration ────────────────────
   try {
-    // Eğer roleId sütunu hâlâ varsa dataValue'ya kopyala
     const cols = db.pragma('table_info(market_items)').map((c) => c.name);
-    if (cols.includes('roleId') && !cols.includes('_roleId_migrated')) {
+    if (cols.includes('roleId')) {
       db.exec(`UPDATE market_items SET dataValue = roleId WHERE dataValue = '' OR dataValue IS NULL`);
-      console.log('[DB] Migration: roleId → dataValue kopyalandı.');
+      console.log('[DB] Migration: roleId -> dataValue kopyalandi.');
     }
-  } catch { /* roleId sütunu yoksa geç */ }
+  } catch { /* roleId sutunu yoksa gec */ }
 
-  // ── Market Varsayılan Ürünleri (Seed) ────────────────────
-  // Tablo boşsa ilk ürünleri ekle
-  const itemCount = db.prepare('SELECT COUNT(*) as cnt FROM market_items').get();
-  if (itemCount.cnt === 0) {
-    const insert = db.prepare(
-      'INSERT INTO market_items (name, price, type, dataValue) VALUES (?, ?, ?, ?)'
-    );
-    const seed = db.transaction(() => {
-      // İsim renkleri — dataValue = Discord Rol ID'si
-      insert.run('🍏 Matrix Yeşili',    300, 'color', '1520168372547883209');
-      insert.run('🟣 Kuantum Moru',     500, 'color', '1520168823741747302');
-      // Profil arka planları — dataValue = resim URL'si (placeholder)
-      insert.run('🌌 Siber Şehir',      800, 'bg', 'https://i.imgur.com/placeholder1.png');
-      insert.run('💻 Hacker Terminali', 800, 'bg', 'https://i.imgur.com/placeholder2.png');
-    });
-    seed();
-    console.log('[DB] Market varsayılan ürünleri eklendi (4 ürün).');
-  } else {
-    // ── Mevcut kayıtların type/dataValue değerlerini güncelle ─
-    const updates = [
-      { id: 1, name: '🍏 Matrix Yeşili',    price: 300, type: 'color', dataValue: '1520168372547883209' },
-      { id: 2, name: '🟣 Kuantum Moru',     price: 500, type: 'color', dataValue: '1520168823741747302' },
-      { id: 3, name: '🌌 Siber Şehir',      price: 800, type: 'bg',    dataValue: 'https://i.imgur.com/placeholder1.png' },
-      { id: 4, name: '💻 Hacker Terminali', price: 800, type: 'bg',    dataValue: 'https://i.imgur.com/placeholder2.png' },
-    ];
-    const upStmt = db.prepare(
-      'UPDATE market_items SET name = ?, price = ?, type = ?, dataValue = ? WHERE id = ?'
-    );
-    const upAll = db.transaction(() => {
-      for (const u of updates) upStmt.run(u.name, u.price, u.type, u.dataValue, u.id);
-    });
-    upAll();
-    console.log('[DB] Market ürünleri güncellendi (v2 şema).');
-  }
+  // ── Renk Ürünleri (ID 1-2) — Upsert ─────────────────────
+  const colorUpsert = db.prepare(`
+    INSERT INTO market_items (id, name, price, type, dataValue)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, type=excluded.type, dataValue=excluded.dataValue
+  `);
+  const colorSeed = db.transaction(() => {
+    colorUpsert.run(1, '🍏 Matrix Yeşili', 300, 'color', '1520168372547883209');
+    colorUpsert.run(2, '🟣 Kuantum Moru',  500, 'color', '1520168823741747302');
+  });
+  colorSeed();
 
-  console.log('[DB] Veritabanı başlatıldı → database.sqlite');
+  // ── Arka Plan Ürünleri (ID 3-11) — INSERT OR IGNORE ──────
+  // Var olanları etkilemez, eksik olanları ekler.
+  // Sonra isim/fiyat/URL'yi günceller.
+  const bgItems = [
+    // 💻 Kuantum & Donanım Serisi
+    { id: 3,  name: '💻 Hacker Terminali',     price: 500, url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=700&h=250&fit=crop' },
+    { id: 4,  name: '🔵 Çekirdek Devre',       price: 500, url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=700&h=250&fit=crop' },
+    { id: 5,  name: '🟣 Kuantum Ağı',          price: 500, url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=700&h=250&fit=crop' },
+    { id: 6,  name: '🌌 Derin Uzay',           price: 500, url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=700&h=250&fit=crop' },
+    { id: 7,  name: '⚡ Veri Akışı',           price: 500, url: 'https://images.unsplash.com/photo-1614729939124-032f0b56c9ce?q=80&w=700&h=250&fit=crop' },
+    // 🌃 Siber Şehir Serisi
+    { id: 8,  name: '🏙️ Neon Tokyo',          price: 500, url: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=700&h=250&fit=crop' },
+    { id: 9,  name: '🌆 Karanlık Metropol',    price: 500, url: 'https://image.pollinations.ai/prompt/dark%20metropolis%20from%20above%20night%20aerial%20view%20cyberpunk%20city?width=700&height=250&nologo=true' },
+    { id: 10, name: '🌧️ Yağmurlu Gece Şehri', price: 500, url: 'https://images.unsplash.com/photo-1555448248-2571daf6344b?q=80&w=700&h=250&fit=crop' },
+    { id: 11, name: '🏢 Dev Gökdelenler',      price: 500, url: 'https://image.pollinations.ai/prompt/futuristic%20mega%20skyscrapers%20night%20cyberpunk%20cityscape%20neon?width=700&height=250&nologo=true' },
+  ];
+
+  const bgUpsert = db.prepare(`
+    INSERT INTO market_items (id, name, price, type, dataValue)
+    VALUES (?, ?, ?, 'bg', ?)
+    ON CONFLICT(id) DO UPDATE SET name=excluded.name, price=excluded.price, type='bg', dataValue=excluded.dataValue
+  `);
+  const bgSeed = db.transaction(() => {
+    for (const item of bgItems) {
+      bgUpsert.run(item.id, item.name, item.price, item.url);
+    }
+  });
+  bgSeed();
+
+  console.log('[DB] Market urunleri senkronize edildi (2 renk + 9 arka plan).');
+  console.log('[DB] Veritabani baslatildi → database.sqlite');
   return db;
 }
 
@@ -184,7 +187,6 @@ function getActiveItems(userId) {
  */
 function setActiveItem(userId, type, itemId) {
   const col = type === 'color' ? 'active_color_id' : 'active_bg_id';
-  // Kullanıcı satırı yoksa oluştur
   getDb().prepare('INSERT OR IGNORE INTO reputation (user_id) VALUES (?)').run(userId);
   getDb().prepare(`UPDATE reputation SET ${col} = ? WHERE user_id = ?`).run(itemId, userId);
 }
