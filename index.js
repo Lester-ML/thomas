@@ -34,6 +34,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,      // Mesaj içeriğini oku (Privileged Intent!)
     GatewayIntentBits.GuildMessageReactions, // Reaksiyonları dinle
     GatewayIntentBits.GuildMembers,        // Üye bilgilerini çek (liderlik için)
+    GatewayIntentBits.GuildVoiceStates,    // Sesli kanal giriş-çıkış (Voice Leveling)
   ],
   partials: [
     Partials.Message,   // Eski mesajlardaki reaksiyonlar
